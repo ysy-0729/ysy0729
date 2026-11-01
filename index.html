@@ -1,0 +1,2814 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f7faff">
+<meta name="description" content="杭电综合服务网页：面向杭州电子科技大学在校生的校园信息入口，包含校园地图、每楼地图查询、周边外卖与校园生活。">
+<title>杭电综合服务网页 · 校园生活一站直达</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%232563eb'/%3E%3Cstop offset='1' stop-color='%2314b8a6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='17' fill='url(%23g)'/%3E%3Ctext x='32' y='42' font-size='24' font-family='Arial' font-weight='700' text-anchor='middle' fill='white'%3EHDU%3C/text%3E%3C/svg%3E">
+
+<!--
+  ============================================================
+  杭电综合服务网页 · 首页 v0.2
+  ============================================================
+  修改指南
+  1. 改主色、圆角、阴影    → 搜索「01. 全局变量」
+  2. 改顶部导航            → 搜索「PAGE: 顶部导航」
+  3. 改欢迎标语与简介      → 搜索「PAGE: 首屏欢迎区」
+  4. 改服务入口卡片        → 搜索「PAGE: 服务入口」
+  5. 改校园地图与地点数据  → 搜索「CAMPUS_LOCATIONS」
+  6. 改占位弹窗文案        → 搜索「FEATURES 配置」
+  7. 改页脚与版权          → 搜索「PAGE: 页脚」
+
+  说明：整页只有一个 HTML 文件，CSS 与 JavaScript 都写在文件内部。
+  当前版本完成首页与校园地图；楼宇查询、外卖和校园生活先以弹窗占位。
+  地图上的地点数据集中在脚本的 CAMPUS_LOCATIONS 里，位置用百分比坐标，
+  换成真实地图图片后只需微调这些坐标即可。
+  ============================================================
+-->
+
+<style>
+/* ============================================================
+   01. 全局变量：想换主题色，优先改这里
+   ============================================================ */
+:root {
+  /* 品牌蓝 */
+  --blue-700: #1e40af;
+  --blue-600: #2563eb;
+  --blue-500: #3b82f6;
+  --blue-100: #dbeafe;
+  --blue-50: #eff6ff;
+
+  /* 辅助色：薄荷绿、暖黄、淡紫 */
+  --mint-600: #0d9488;
+  --mint-500: #14b8a6;
+  --mint-100: #ccfbf1;
+  --amber-600: #d97706;
+  --amber-100: #fef3c7;
+  --violet-600: #7c3aed;
+  --violet-100: #ede9fe;
+
+  /* 文字与背景 */
+  --ink-900: #0f1e35;
+  --ink-700: #334155;
+  --ink-500: #64748b;
+  --ink-400: #94a3b8;
+  --line: #e2e8f0;
+  --bg: #f7faff;
+  --white: #ffffff;
+
+  /* 圆角与阴影 */
+  --radius-lg: 24px;
+  --radius: 18px;
+  --radius-sm: 12px;
+  --shadow-sm: 0 1px 2px rgba(15, 30, 53, .04);
+  --shadow-md: 0 18px 40px -28px rgba(15, 30, 53, .28);
+  --shadow-lg: 0 30px 70px -40px rgba(15, 30, 53, .35);
+
+  /* 布局尺寸 */
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --header-h: 76px;
+  --container: 1120px;
+}
+
+/* ============================================================
+   02. 基础重置：统一浏览器默认样式
+   ============================================================ */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  /* 顶部导航是吸顶的，滚动到锚点时要留出它的高度 */
+  scroll-padding-top: calc(var(--header-h) + 24px);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink-900);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(60% 38% at 92% -5%, rgba(59, 130, 246, .10), transparent 70%),
+    radial-gradient(50% 32% at 2% 100%, rgba(20, 184, 166, .08), transparent 72%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body.modal-open { overflow: hidden; }
+
+h1,
+h2,
+h3,
+p { margin-top: 0; }
+
+button,
+input,
+textarea { font: inherit; }
+
+button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img,
+svg { display: block; max-width: 100%; }
+
+[hidden] { display: none !important; }
+
+::selection { background: #cfe1ff; }
+
+:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, .35);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* 所有内联图标统一使用线条风格 */
+.icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* 隐藏 SVG 图标库本体，但仍允许页面引用 */
+.svg-sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* 键盘用户按 Tab 时可以快速跳过导航 */
+.skip-link {
+  position: absolute;
+  top: -70px;
+  left: 16px;
+  z-index: 200;
+  padding: 10px 15px;
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--blue-700);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow-md);
+  transition: top .18s ease;
+}
+
+.skip-link:focus { top: 12px; }
+
+/* 只给屏幕阅读器看的文字（视觉上隐藏，但仍会被读出来） */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ============================================================
+   03. 通用布局与按钮
+   ============================================================ */
+.container {
+  width: 100%;
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 22px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 650;
+  white-space: nowrap;
+  transition: transform .2s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+}
+
+.btn .icon {
+  width: 17px;
+  height: 17px;
+}
+
+.btn-primary {
+  color: #fff;
+  background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
+  box-shadow: 0 14px 28px -14px rgba(37, 99, 235, .65);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 34px -14px rgba(37, 99, 235, .72);
+}
+
+.btn-secondary {
+  color: var(--ink-700);
+  background: var(--white);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-secondary:hover {
+  transform: translateY(-2px);
+  border-color: #c7d7ee;
+  color: var(--blue-700);
+}
+
+/* 章节上方的小英文标签 */
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  color: var(--blue-600);
+  text-transform: uppercase;
+}
+
+/* ============================================================
+   04. PAGE: 顶部导航
+   ============================================================ */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid rgba(226, 232, 240, .8);
+  background: rgba(247, 250, 255, .86);
+  backdrop-filter: saturate(180%) blur(18px);
+  -webkit-backdrop-filter: saturate(180%) blur(18px);
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  height: var(--header-h);
+}
+
+/* 左侧品牌区 */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex: none;
+}
+
+.brand-mark {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  background: linear-gradient(135deg, var(--blue-600), var(--mint-500));
+  box-shadow: 0 10px 20px -10px rgba(37, 99, 235, .6);
+}
+
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.brand-copy strong {
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: .01em;
+}
+
+.brand-copy small {
+  margin-top: 3px;
+  font-size: 9px;
+  letter-spacing: .18em;
+  color: var(--ink-400);
+}
+
+/* 桌面端五个栏目 */
+.desktop-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 38px;
+  padding: 0 13px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--ink-500);
+  transition: color .18s ease, background .18s ease;
+}
+
+.nav-link:hover {
+  color: var(--blue-700);
+  background: rgba(37, 99, 235, .06);
+}
+
+.nav-link.is-active {
+  color: var(--blue-700);
+  font-weight: 650;
+  background: var(--blue-50);
+}
+
+/* 当前栏目下方的小横线 */
+.nav-link.is-active::after {
+  content: "";
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  width: 16px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--blue-600);
+  transform: translateX(-50%);
+}
+
+/* “占位”小标签 */
+.nav-tag {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--amber-100);
+  color: var(--amber-600);
+  font-size: 8.5px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* 移动端汉堡按钮 */
+.menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  margin-left: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+  color: var(--ink-700);
+}
+
+.menu-toggle .icon-close { display: none; }
+.menu-toggle.is-open .icon-menu { display: none; }
+.menu-toggle.is-open .icon-close { display: block; }
+
+/* 移动端展开菜单 */
+.mobile-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  display: none;
+  padding: 8px 18px 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--white);
+  box-shadow: 0 24px 40px -30px rgba(15, 30, 53, .35);
+}
+
+.mobile-menu.is-open {
+  display: block;
+  animation: menu-in .2s ease both;
+}
+
+.mobile-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  color: var(--ink-700);
+  text-align: left;
+  transition: background .18s ease, color .18s ease;
+}
+
+.mobile-link:hover {
+  color: var(--blue-700);
+  background: var(--blue-50);
+}
+
+.mobile-link + .mobile-link {
+  border-top: 1px dashed var(--line);
+  border-radius: 0;
+}
+
+.mobile-link .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--ink-400);
+}
+
+.mobile-link-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mobile-current {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--blue-600);
+}
+
+@keyframes menu-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   05. PAGE: 首屏欢迎区
+   ============================================================ */
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding: 72px 0 60px;
+}
+
+/* 背景两团柔和的渐变色，让首屏更轻盈 */
+.hero::before,
+.hero::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.hero::before {
+  top: -190px;
+  right: -120px;
+  width: 540px;
+  height: 540px;
+  background: radial-gradient(circle, rgba(59, 130, 246, .16), transparent 66%);
+}
+
+.hero::after {
+  bottom: -240px;
+  left: -170px;
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(20, 184, 166, .13), transparent 68%);
+}
+
+.hero-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1.02fr .98fr;
+  align-items: center;
+  gap: 48px;
+}
+
+.hero-copy {
+  max-width: 580px;
+  animation: rise-in .6s ease both;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--blue-100);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .82);
+  box-shadow: var(--shadow-sm);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: .04em;
+  color: var(--blue-700);
+}
+
+.hero-badge .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mint-500);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, .16);
+}
+
+.hero h1 {
+  margin: 22px 0 18px;
+  font-size: clamp(38px, 5.6vw, 62px);
+  font-weight: 800;
+  line-height: 1.14;
+  letter-spacing: -.035em;
+  color: var(--ink-900);
+}
+
+/* 第二行文字下面加一块浅色“荧光笔”底色 */
+.hero h1 .highlight {
+  position: relative;
+  z-index: 0;
+  display: inline-block;
+}
+
+.hero h1 .highlight::after {
+  content: "";
+  position: absolute;
+  right: -4px;
+  bottom: 4px;
+  left: -4px;
+  z-index: -1;
+  height: 16px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #bfdbfe, #ccfbf1);
+  transform: rotate(-1.2deg);
+}
+
+.hero-intro {
+  max-width: 540px;
+  margin: 0;
+  font-size: 15.5px;
+  line-height: 1.85;
+  color: var(--ink-500);
+}
+
+.hero-intro strong {
+  color: var(--ink-700);
+  font-weight: 600;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+/* 欢迎语下方的三个小卖点 */
+.hero-points {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 26px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hero-points li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-500);
+}
+
+.hero-points .icon {
+  width: 15px;
+  height: 15px;
+  color: var(--mint-600);
+}
+
+/* 右侧插画容器 */
+.hero-visual {
+  position: relative;
+  animation: rise-in .7s .08s ease both;
+}
+
+.scene {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .92);
+  border-radius: 32px;
+  background: linear-gradient(135deg, #dff3ff, #f0fdfa);
+  box-shadow: var(--shadow-lg);
+}
+
+.campus-scene {
+  width: 100%;
+  height: auto;
+}
+
+/* 插画上的两枚浮动信息卡 */
+.float-card {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 13px;
+  border: 1px solid rgba(255, 255, 255, .92);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .93);
+  box-shadow: 0 18px 30px -18px rgba(15, 30, 53, .38);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: float-card 5s ease-in-out infinite;
+}
+
+.float-card .float-icon {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--blue-50);
+  color: var(--blue-600);
+}
+
+.float-card .float-icon.mint {
+  background: var(--mint-100);
+  color: var(--mint-600);
+}
+
+.float-card strong {
+  display: block;
+  font-size: 11.5px;
+  line-height: 1.2;
+}
+
+.float-card small {
+  display: block;
+  margin-top: 2px;
+  font-size: 9.5px;
+  color: var(--ink-400);
+}
+
+.float-map {
+  top: 26px;
+  left: -14px;
+}
+
+.float-food {
+  right: -14px;
+  bottom: 30px;
+  animation-delay: -2.2s;
+}
+
+@keyframes float-card {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   06. PAGE: 服务入口
+   ============================================================ */
+.services { padding: 24px 0 20px; }
+
+.section-heading {
+  max-width: 640px;
+  margin-bottom: 28px;
+}
+
+.section-heading h2 {
+  margin: 0 0 8px;
+  font-size: clamp(26px, 3.2vw, 36px);
+  font-weight: 750;
+  line-height: 1.25;
+  letter-spacing: -.025em;
+  text-wrap: balance;
+}
+
+.section-heading p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink-500);
+}
+
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+/* 每个服务入口都是一张可点击的卡片 */
+.service-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 214px;
+  overflow: hidden;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+  text-align: left;
+  transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+  animation: rise-in .5s ease both;
+}
+
+.service-card:nth-child(1) { animation-delay: .08s; }
+.service-card:nth-child(2) { animation-delay: .14s; }
+.service-card:nth-child(3) { animation-delay: .20s; }
+.service-card:nth-child(4) { animation-delay: .26s; }
+
+/* 卡片顶部一条对应颜色的细线 */
+.service-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  background: var(--tone, var(--blue-500));
+  opacity: .9;
+}
+
+.service-card:hover {
+  transform: translateY(-4px);
+  border-color: #cbdcf5;
+  box-shadow: var(--shadow-md);
+}
+
+/* 四种卡片配色通过 CSS 变量复用 */
+.tone-blue { --tone: var(--blue-600); --tone-bg: var(--blue-50); }
+.tone-mint { --tone: var(--mint-600); --tone-bg: var(--mint-100); }
+.tone-amber { --tone: var(--amber-600); --tone-bg: var(--amber-100); }
+.tone-violet { --tone: var(--violet-600); --tone-bg: var(--violet-100); }
+
+/* 地图里另外用到的两种配色：行政楼（靛蓝）与体育馆（玫红） */
+.tone-indigo { --tone: #4f46e5; --tone-bg: #eef2ff; }
+.tone-rose { --tone: #e11d48; --tone-bg: #ffe4e6; }
+
+.service-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--tone-bg);
+  color: var(--tone);
+}
+
+.service-icon .icon {
+  width: 22px;
+  height: 22px;
+}
+
+.service-card h3 {
+  margin: 16px 0 6px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+.service-card p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--ink-500);
+}
+
+.service-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-400);
+}
+
+.status .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #cbd5e1;
+}
+
+.status.soon .dot { background: var(--amber-600); }
+.status.placeholder .dot { background: var(--violet-600); }
+.status.live { color: var(--mint-600); }
+.status.live .dot { background: var(--mint-500); }
+
+.service-arrow {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--blue-50);
+  color: var(--blue-600);
+  transition: transform .22s ease, background .22s ease;
+}
+
+.service-arrow .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.service-card:hover .service-arrow {
+  transform: translateX(2px);
+  background: var(--blue-100);
+}
+
+/* ============================================================
+   07. PAGE: 校园地图
+   ============================================================ */
+.campus-map { padding: 36px 0 24px; }
+
+/* 地图外层白卡片 */
+.map-card {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  background: var(--white);
+  box-shadow: var(--shadow-md);
+}
+
+/* 卡片顶部的说明条 */
+.map-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 4px 6px 14px;
+}
+
+.map-toolbar-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-700);
+}
+
+.map-toolbar-title .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--blue-600);
+}
+
+.map-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--ink-400);
+}
+
+.map-hint::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mint-500);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, .14);
+}
+
+/* 地图画布：所有标记点都用百分比定位，换图片后坐标也能复用 */
+.map-canvas {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9.2;
+  min-height: 460px;
+  border: 1px solid #dce9f9;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 16% 18%, rgba(59, 130, 246, .10), transparent 38%),
+    radial-gradient(circle at 86% 78%, rgba(20, 184, 166, .10), transparent 40%),
+    linear-gradient(rgba(148, 163, 184, .10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, .10) 1px, transparent 1px),
+    #f3f8ff;
+  background-size: auto, auto, 42px 42px, 42px 42px, auto;
+}
+
+/* 想换成真实地图时：给 .map-canvas 加上 background-image: url("图片地址");
+   再把 background-size 设为 cover，标记点会继续按百分比坐标落位。 */
+
+.map-drawing {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* 图左上角的占位说明，换成真实地图后可以删除 */
+.map-placeholder-tag {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 3;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .9);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-500);
+  pointer-events: none;
+}
+
+/* 地图上的大色块，用来示意不同功能区域 */
+.map-zone {
+  position: absolute;
+  display: flex;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border: 1px dashed currentColor;
+  border-radius: 14px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .02em;
+  pointer-events: none;
+}
+
+.zone-library {
+  left: 8%;
+  top: 12%;
+  width: 24%;
+  height: 20%;
+  background: rgba(37, 99, 235, .09);
+  color: rgba(29, 78, 216, .72);
+}
+
+.zone-teaching {
+  left: 64%;
+  top: 11%;
+  width: 27%;
+  height: 22%;
+  background: rgba(13, 148, 136, .10);
+  color: rgba(15, 118, 110, .72);
+}
+
+.zone-canteen {
+  left: 38%;
+  top: 34%;
+  width: 18%;
+  height: 15%;
+  background: rgba(217, 119, 6, .10);
+  color: rgba(180, 83, 9, .75);
+}
+
+.zone-admin {
+  left: 9%;
+  top: 62%;
+  width: 21%;
+  height: 19%;
+  background: rgba(79, 70, 229, .09);
+  color: rgba(67, 56, 202, .72);
+}
+
+.zone-dorm {
+  left: 36%;
+  top: 62%;
+  width: 19%;
+  height: 22%;
+  background: rgba(124, 58, 237, .09);
+  color: rgba(109, 40, 217, .72);
+}
+
+.zone-gym {
+  left: 65%;
+  top: 60%;
+  width: 26%;
+  height: 24%;
+  background: rgba(225, 29, 72, .08);
+  color: rgba(190, 18, 60, .72);
+}
+
+/* 地图标记点：由 JavaScript 根据地点数据生成 */
+.map-pin {
+  position: absolute;
+  top: var(--y);
+  left: var(--x);
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  background: var(--tone, var(--blue-600));
+  color: #fff;
+  box-shadow: 0 9px 20px -7px rgba(15, 30, 53, .55);
+  transform: translate(-50%, -50%);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.map-pin .icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* 选中标记点后出现一圈缓慢扩散的光环 */
+.map-pin::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border: 1.5px solid var(--tone, var(--blue-600));
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.map-pin:hover {
+  transform: translate(-50%, -50%) scale(1.08);
+  box-shadow: 0 12px 24px -8px rgba(15, 30, 53, .6);
+}
+
+.map-pin:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, .35);
+  outline-offset: 3px;
+}
+
+.map-pin[aria-pressed="true"] {
+  z-index: 5;
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.map-pin[aria-pressed="true"]::before {
+  animation: pin-pulse 1.8s ease-out infinite;
+}
+
+/* 选中的标记点不再显示小名字，避免和介绍弹窗重叠 */
+.map-pin[aria-pressed="true"] .map-pin-label {
+  opacity: 0;
+}
+
+/* 标记点下方的小名字；手机上会缩小字号，避免太挤 */
+.map-pin-label {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .94);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.4;
+  color: var(--ink-700);
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+@keyframes pin-pulse {
+  0% { opacity: .55; transform: scale(.85); }
+  70%, 100% { opacity: 0; transform: scale(1.35); }
+}
+
+/* 点击标记点后弹出的地点介绍卡片 */
+.map-popup {
+  position: absolute;
+  z-index: 6;
+  width: 240px;
+  max-width: calc(100% - 24px);
+  padding: 15px 34px 15px 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 22px 50px -22px rgba(15, 30, 53, .45);
+  animation: map-popup-in .2s ease both;
+}
+
+/* 小三角指向被点击的标记点；位置由 JavaScript 写入 --arrow-x */
+.map-popup::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: var(--arrow-x, 50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 3px 3px 6px rgba(15, 30, 53, .06);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.map-popup[data-side="bottom"]::after {
+  top: -6px;
+  bottom: auto;
+  transform: translateX(-50%) rotate(225deg);
+}
+
+.map-popup-tag {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--tone-bg, var(--blue-50));
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--tone, var(--blue-600));
+}
+
+.map-popup h3 {
+  margin: 8px 0 4px;
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: -.01em;
+}
+
+.map-popup p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--ink-500);
+}
+
+.map-popup-close {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-400);
+  transition: background .18s ease, color .18s ease;
+}
+
+.map-popup-close:hover {
+  background: var(--blue-50);
+  color: var(--ink-700);
+}
+
+.map-popup-close .icon {
+  width: 14px;
+  height: 14px;
+}
+
+@keyframes map-popup-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 地图下方：数据说明 */
+.map-footnote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 6px 2px;
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--ink-400);
+}
+
+.map-demo-badge {
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--amber-100);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--amber-600);
+}
+
+/* 地点列表 */
+.location-panel { margin-top: 22px; }
+
+.location-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.location-panel-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.location-panel-head span {
+  font-size: 10.5px;
+  color: var(--ink-400);
+}
+
+.location-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+/* 列表项本身也是按钮，点击后选中地图上对应的标记点 */
+.location-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+  text-align: left;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.location-item:hover {
+  border-color: #c9dcf6;
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.location-item[aria-pressed="true"] {
+  border-color: var(--tone, var(--blue-600));
+  background: linear-gradient(135deg, #fff, var(--tone-bg, var(--blue-50)));
+  box-shadow: 0 14px 28px -22px rgba(15, 30, 53, .55);
+}
+
+.location-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: var(--tone-bg, var(--blue-50));
+  color: var(--tone, var(--blue-600));
+}
+
+.location-icon .icon {
+  width: 17px;
+  height: 17px;
+}
+
+.location-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.location-copy strong {
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.location-copy small {
+  overflow: hidden;
+  font-size: 10.5px;
+  color: var(--ink-400);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.location-arrow {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin-left: auto;
+  color: var(--ink-400);
+  transition: transform .18s ease;
+}
+
+.location-item:hover .location-arrow {
+  transform: translateX(2px);
+}
+
+/* ============================================================
+   08. PAGE: 原型说明条
+   ============================================================ */
+.prototype-note { padding: 20px 0 80px; }
+
+.note-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 22px 24px;
+  border: 1px solid var(--blue-100);
+  border-radius: 20px;
+  background: linear-gradient(135deg, #ffffff, #f3f9ff);
+  box-shadow: var(--shadow-sm);
+}
+
+.note-icon {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--blue-600), var(--mint-500));
+  box-shadow: 0 10px 20px -12px rgba(37, 99, 235, .5);
+}
+
+.note-icon .icon {
+  width: 21px;
+  height: 21px;
+}
+
+.note-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.note-copy h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.note-copy p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--ink-500);
+}
+
+.note-badge {
+  align-self: center;
+  flex: none;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--blue-100);
+  color: var(--blue-700);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+
+/* ============================================================
+   09. PAGE: 页脚
+   ============================================================ */
+.site-footer {
+  color: #a9bdd6;
+  background:
+    radial-gradient(80% 60% at 90% 0%, rgba(37, 99, 235, .18), transparent 60%),
+    #0b1b33;
+}
+
+.footer-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 32px;
+  padding: 46px 0 30px;
+}
+
+.footer-brand .brand-copy strong { color: #fff; }
+.footer-brand .brand-copy small { color: #6d87a8; }
+
+.footer-desc {
+  max-width: 360px;
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: #8ca3c0;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  justify-content: flex-end;
+  gap: 8px 18px;
+  padding-top: 4px;
+}
+
+.footer-link {
+  font-size: 12.5px;
+  color: #a9bdd6;
+  transition: color .18s ease;
+}
+
+.footer-link:hover { color: #fff; }
+
+.footer-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 18px 0 24px;
+  border-top: 1px solid rgba(255, 255, 255, .1);
+  font-size: 10.5px;
+  color: #6d87a8;
+}
+
+/* ============================================================
+   10. PAGE: “建设中”弹窗
+   ============================================================ */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 20, 38, .58);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: fade-in .2s ease both;
+}
+
+.modal-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 28px;
+  border-radius: 26px;
+  background: var(--white);
+  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .5);
+  animation: modal-in .26s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--ink-400);
+  background: var(--bg);
+  transition: color .18s ease, background .18s ease;
+}
+
+.modal-close:hover {
+  color: var(--ink-700);
+  background: var(--line);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.modal-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--blue-600), var(--mint-500));
+  box-shadow: 0 12px 24px -14px rgba(37, 99, 235, .6);
+}
+
+.modal-icon .icon {
+  width: 25px;
+  height: 25px;
+}
+
+.modal-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  color: var(--blue-600);
+}
+
+.modal-card h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  line-height: 1.4;
+  letter-spacing: -.02em;
+}
+
+.modal-card p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ink-500);
+}
+
+.modal-note {
+  margin-top: 14px !important;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--blue-50);
+  font-size: 11px !important;
+  color: var(--blue-700) !important;
+}
+
+.modal-actions { margin-top: 22px; }
+.modal-actions .btn { width: 100%; }
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(16px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ============================================================
+   11. 响应式：平板与手机
+   ============================================================ */
+@media (max-width: 1024px) {
+  .hero { padding: 56px 0 48px; }
+  .hero-grid { gap: 32px; }
+
+  .service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .float-map { left: 8px; }
+  .float-food { right: 8px; }
+
+  .location-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 860px) {
+  :root { --header-h: 68px; }
+
+  .desktop-nav { display: none; }
+  .menu-toggle { display: inline-flex; }
+
+  .hero { padding: 44px 0 40px; }
+
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+
+  .hero-copy {
+    max-width: 640px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .hero-badge { margin: 0 auto; }
+
+  .hero h1 { margin-top: 18px; }
+
+  .hero-intro { margin: 0 auto; }
+
+  .hero-actions,
+  .hero-points { justify-content: center; }
+
+  .hero-visual {
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  .campus-map { padding: 28px 0 20px; }
+  .map-canvas { min-height: 430px; }
+
+  .footer-main {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .footer-links { justify-content: flex-start; }
+}
+
+@media (max-width: 620px) {
+  .container { padding: 0 18px; }
+
+  .hero h1 { font-size: clamp(34px, 9.4vw, 44px); }
+
+  .hero-intro {
+    font-size: 14.5px;
+    line-height: 1.8;
+  }
+
+  .hero-actions { margin-top: 24px; }
+  .hero-actions .btn { flex: 1 1 190px; }
+
+  .hero-points {
+    gap: 7px 14px;
+    margin-top: 22px;
+  }
+
+  .service-grid { grid-template-columns: 1fr; }
+
+  .service-card { min-height: 190px; }
+
+  .float-card { display: none; }
+
+  /* 手机上的地图：固定高度，隐藏区域文字和小标签，保证标记点够大 */
+  .map-card { padding: 12px; border-radius: 22px; }
+
+  .map-toolbar { padding: 2px 4px 10px; }
+  .map-hint { font-size: 10.5px; }
+
+  .map-canvas {
+    aspect-ratio: auto;
+    height: 460px;
+    min-height: 0;
+    border-radius: 16px;
+  }
+
+  .map-zone { padding: 0; }
+  .map-zone span { display: none; }
+
+  .map-pin {
+    width: 34px;
+    height: 34px;
+  }
+
+  .map-pin-label {
+    top: calc(100% + 5px);
+    padding: 2px 6px;
+    font-size: 9px;
+  }
+
+  .map-popup { padding: 14px 32px 14px 14px; }  .map-popup p { font-size: 11.5px; }
+
+  .map-footnote { padding: 10px 4px 2px; }
+
+  .location-panel { margin-top: 18px; }
+  .location-grid { grid-template-columns: 1fr; }
+
+  .note-card {
+    flex-wrap: wrap;
+    padding: 20px;
+  }
+
+  .note-copy { flex-basis: calc(100% - 60px); }
+  .note-badge { align-self: flex-start; margin-left: 60px; }
+
+  .modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-card {
+    max-width: none;
+    max-height: 88vh;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+    border-radius: 24px 24px 0 0;
+    animation: sheet-up .28s cubic-bezier(.2, .8, .2, 1) both;
+  }
+
+  .footer-main { padding: 38px 0 24px; }
+}
+
+@media (max-width: 420px) {
+  .brand-copy small { display: none; }
+  .brand-copy strong { font-size: 14px; }
+
+  .hero-badge {
+    font-size: 9.5px;
+    letter-spacing: .02em;
+  }
+
+  .hero h1 { font-size: 34px; }
+
+  .map-canvas { height: 420px; }
+  .map-pin { width: 32px; height: 32px; }
+  .map-pin .icon { width: 16px; height: 16px; }
+
+  .btn {
+    height: 46px;
+    padding: 0 18px;
+    font-size: 13.5px;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+/* 手机端弹窗从底部滑入 */
+@keyframes sheet-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 尊重“减少动态效果”的系统设置 */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<!-- 键盘用户跳过导航，直接进入主内容 -->
+<a class="skip-link" href="#main">跳到主要内容</a>
+
+<!-- ============================================================
+     内联 SVG 图标库：不依赖任何外部图标文件
+     ============================================================ -->
+<svg xmlns="http://www.w3.org/2000/svg" class="svg-sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-map" viewBox="0 0 24 24">
+    <path d="m9 4-6 2v14l6-2 6 2 6-2V4l-6 2-6-2z"/>
+    <path d="M9 4v14M15 6v14"/>
+  </symbol>
+  <symbol id="i-building" viewBox="0 0 24 24">
+    <path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/>
+    <path d="M16 9h2a2 2 0 0 1 2 2v10M2 21h20"/>
+    <path d="M8 7h4M8 11h4M8 15h4M8 19h4"/>
+  </symbol>
+  <symbol id="i-bowl" viewBox="0 0 24 24">
+    <path d="M4 11h16a8 8 0 0 1-16 0z"/>
+    <path d="M4 19h16"/>
+    <path d="M8 8c0-1 1-2 1-3M12 8c0-1 1-2 1-3M16 8c0-1 1-2 1-3"/>
+  </symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24">
+    <path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 0 0-7.1 7.1L12 21l8.8-8.3a5 5 0 0 0 0-7.1z"/>
+  </symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24">
+    <path d="M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11z"/>
+    <circle cx="12" cy="10" r="2.5"/>
+  </symbol>
+  <symbol id="i-book" viewBox="0 0 24 24">
+    <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H12v18H6.5A2.5 2.5 0 0 1 4 18.5v-13z"/>
+    <path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H12v18h5.5a2.5 2.5 0 0 0 2.5-2.5v-13z"/>
+  </symbol>
+  <symbol id="i-bed" viewBox="0 0 24 24">
+    <path d="M3 19v-9M3 14h18v5M21 19v-5a3 3 0 0 0-3-3h-7v3"/>
+    <circle cx="7" cy="10" r="2"/>
+  </symbol>
+  <symbol id="i-dumbbell" viewBox="0 0 24 24">
+    <path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/>
+  </symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24">
+    <path d="M5 21V4M5 4h11l-2 4 2 4H5"/>
+  </symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24">
+    <path d="m12 3 1.7 4.8L18.5 9.5l-4.8 1.7L12 16l-1.7-4.8L5.5 9.5l4.8-1.7L12 3z"/>
+    <path d="m18.5 15 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z"/>
+  </symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24">
+    <path d="M4 12h16M14 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9"/>
+    <path d="m8.5 12 2.5 2.5 4.5-5"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-close" viewBox="0 0 24 24">
+    <path d="M6 6l12 12M18 6 6 18"/>
+  </symbol>
+</svg>
+
+<!-- ============================================================
+     PAGE: 顶部导航
+     ============================================================ -->
+<header class="site-header" id="siteHeader">
+  <div class="container header-inner">
+    <!-- 左侧品牌 -->
+    <a class="brand" href="#home" aria-label="杭电综合服务网页首页">
+      <span class="brand-mark">HDU</span>
+      <span class="brand-copy">
+        <strong>杭电综合服务</strong>
+        <small>HDU CAMPUS HUB</small>
+      </span>
+    </a>
+
+    <!-- 电脑端导航：首页和校园地图在页内定位，其余栏目暂时打开占位弹窗 -->
+    <nav class="desktop-nav" aria-label="主导航">
+      <a class="nav-link is-active" href="#home" aria-current="page">首页</a>
+      <a class="nav-link" href="#campus-map">校园地图</a>
+      <button class="nav-link" type="button" data-feature="building">每楼地图查询</button>
+      <button class="nav-link" type="button" data-feature="food">周边外卖</button>
+      <button class="nav-link" type="button" data-feature="life">
+        校园生活
+        <span class="nav-tag">占位</span>
+      </button>
+    </nav>
+
+    <!-- 手机端菜单按钮：图标在汉堡和关闭之间切换 -->
+    <button class="menu-toggle" id="menuBtn" type="button" aria-label="打开菜单" aria-controls="mobileMenu" aria-expanded="false">
+      <svg class="icon icon-menu" aria-hidden="true"><use href="#i-menu"></use></svg>
+      <svg class="icon icon-close" aria-hidden="true"><use href="#i-close"></use></svg>
+    </button>
+  </div>
+
+  <!-- 手机端展开菜单 -->
+  <nav class="mobile-menu" id="mobileMenu" aria-label="移动端导航">
+    <a class="mobile-link" href="#home">
+      <span>首页</span>
+      <span class="mobile-current" data-current-for="#home">当前页面</span>
+    </a>
+    <a class="mobile-link" href="#campus-map">
+      <span>校园地图</span>
+      <span class="mobile-link-right">
+        <span class="mobile-current" data-current-for="#campus-map" hidden>当前页面</span>
+        <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+      </span>
+    </a>
+    <button class="mobile-link" type="button" data-feature="building">
+      <span>每楼地图查询</span>
+      <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+    </button>
+    <button class="mobile-link" type="button" data-feature="food">
+      <span>周边外卖</span>
+      <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+    </button>
+    <button class="mobile-link" type="button" data-feature="life">
+      <span>校园生活</span>
+      <span class="mobile-link-right">
+        <span class="nav-tag">占位</span>
+        <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+      </span>
+    </button>
+  </nav>
+</header>
+
+<main id="main">
+
+  <!-- ============================================================
+       PAGE: 首屏欢迎区
+       ============================================================ -->
+  <section class="hero" id="home">
+    <div class="container hero-grid">
+
+      <!-- 左侧：欢迎标语与简介 -->
+      <div class="hero-copy">
+        <span class="hero-badge">
+          <span class="dot"></span>
+          HDU CAMPUS · 学生原型
+        </span>
+
+        <h1>
+          让校园生活<br>
+          <span class="highlight">少绕一点路</span>
+        </h1>
+
+        <p class="hero-intro">
+          杭电综合服务网页，是面向<strong>杭州电子科技大学在校生</strong>的一站式校园信息入口。
+          找教学楼、查地图、发现周边美食、了解校园活动——每天要用的小事，都从这里开始。
+        </p>
+
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#campus-map">
+            <svg class="icon" aria-hidden="true"><use href="#i-map"></use></svg>
+            探索校园地图
+          </a>
+          <a class="btn btn-secondary" href="#services">看看能做什么</a>
+        </div>
+
+        <ul class="hero-points">
+          <li>
+            <svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>
+            面向杭电在校生
+          </li>
+          <li>
+            <svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>
+            电脑 / 手机自适应
+          </li>
+          <li>
+            <svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>
+            功能持续更新
+          </li>
+        </ul>
+      </div>
+
+      <!-- 右侧：校园插画。全部用 SVG 绘制，不依赖图片文件 -->
+      <div class="hero-visual">
+        <div class="scene">
+          <svg class="campus-scene" viewBox="0 0 600 480" role="img" aria-label="校园插画：蓝天、太阳、教学楼、树木和小路">
+            <defs>
+              <linearGradient id="skyGradient" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#dff3ff"/>
+                <stop offset="1" stop-color="#f0fdfa"/>
+              </linearGradient>
+              <linearGradient id="buildingGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ffffff"/>
+                <stop offset="1" stop-color="#e9f2ff"/>
+              </linearGradient>
+              <linearGradient id="roofGradient" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#2563eb"/>
+                <stop offset="1" stop-color="#38bdf8"/>
+              </linearGradient>
+            </defs>
+
+            <!-- 天空 -->
+            <rect width="600" height="480" fill="url(#skyGradient)"/>
+
+            <!-- 太阳与光晕 -->
+            <circle cx="496" cy="92" r="62" fill="#fef3c7" opacity=".5"/>
+            <circle cx="496" cy="92" r="38" fill="#fde68a"/>
+
+            <!-- 云朵 -->
+            <g fill="#ffffff" opacity=".86">
+              <ellipse cx="120" cy="98" rx="42" ry="18"/>
+              <ellipse cx="155" cy="88" rx="30" ry="22"/>
+              <ellipse cx="88" cy="88" rx="24" ry="16"/>
+              <ellipse cx="402" cy="142" rx="30" ry="13"/>
+              <ellipse cx="427" cy="134" rx="20" ry="15"/>
+            </g>
+
+            <!-- 远处的小鸟 -->
+            <g fill="none" stroke="#93c5fd" stroke-width="3" stroke-linecap="round" opacity=".8">
+              <path d="M392 86c6-6 12-6 18 0"/>
+              <path d="M414 74c5-5 10-5 15 0"/>
+            </g>
+
+            <!-- 远处的草地与山坡 -->
+            <path d="M0 344c78-42 138-38 208 2s138 34 208-2 126-32 184 0v136H0z" fill="#dcf6ec"/>
+            <path d="M0 386c92-34 154-26 234 8s154 32 234-4 132-28 132-28v118H0z" fill="#d0f1e5"/>
+
+            <!-- 草坪 -->
+            <path d="M0 382c120-18 206-4 300 2s188-10 300 2v94H0z" fill="#eafaf4"/>
+
+            <!-- 从教学楼门口延伸出来的小路 -->
+            <path d="M282 386c-8 26-22 52-42 94h120c-20-42-34-68-42-94z" fill="#fef3c7"/>
+            <path d="M300 398v64" fill="none" stroke="#fcd34d" stroke-width="3" stroke-dasharray="10 10" stroke-linecap="round"/>
+
+            <!-- 建筑在地面上的淡阴影 -->
+            <ellipse cx="300" cy="379" rx="158" ry="14" fill="#0f1e35" opacity=".08"/>
+
+            <!-- 教学楼两侧的矮楼 -->
+            <rect x="110" y="245" width="110" height="132" rx="10" fill="#eaf2ff"/>
+            <rect x="380" y="245" width="110" height="132" rx="10" fill="#eaf2ff"/>
+
+            <!-- 教学楼主体 -->
+            <rect x="190" y="205" width="220" height="172" rx="12" fill="url(#buildingGradient)"/>
+
+            <!-- 蓝色屋顶 -->
+            <path d="M170 210 232 158h136l62 52H170z" fill="url(#roofGradient)"/>
+            <rect x="232" y="152" width="136" height="8" rx="4" fill="#1d4ed8"/>
+
+            <!-- 屋顶上的旗杆与旗子 -->
+            <path d="M300 152v-34" fill="none" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
+            <path d="M302 120h36l-10 11 10 11h-36z" fill="#fbbf24"/>
+
+            <!-- 两侧矮楼的窗户 -->
+            <g fill="#cfe3ff">
+              <rect x="126" y="266" width="20" height="17" rx="4"/>
+              <rect x="162" y="266" width="20" height="17" rx="4"/>
+              <rect x="126" y="298" width="20" height="17" rx="4"/>
+              <rect x="162" y="298" width="20" height="17" rx="4"/>
+              <rect x="126" y="330" width="20" height="17" rx="4"/>
+              <rect x="162" y="330" width="20" height="17" rx="4"/>
+              <rect x="418" y="266" width="20" height="17" rx="4"/>
+              <rect x="454" y="266" width="20" height="17" rx="4"/>
+              <rect x="418" y="298" width="20" height="17" rx="4"/>
+              <rect x="454" y="298" width="20" height="17" rx="4"/>
+              <rect x="418" y="330" width="20" height="17" rx="4"/>
+              <rect x="454" y="330" width="20" height="17" rx="4"/>
+            </g>
+
+            <!-- 教学楼正面的窗户 -->
+            <g fill="#bfdbfe">
+              <rect x="212" y="252" width="24" height="18" rx="4"/>
+              <rect x="248" y="252" width="24" height="18" rx="4"/>
+              <rect x="328" y="252" width="24" height="18" rx="4"/>
+              <rect x="364" y="252" width="24" height="18" rx="4"/>
+              <rect x="212" y="286" width="24" height="18" rx="4"/>
+              <rect x="248" y="286" width="24" height="18" rx="4"/>
+              <rect x="328" y="286" width="24" height="18" rx="4"/>
+              <rect x="364" y="286" width="24" height="18" rx="4"/>
+            </g>
+
+            <!-- 楼体上的 HDU 标牌 -->
+            <rect x="274" y="214" width="52" height="22" rx="7" fill="#1d4ed8"/>
+            <text x="300" y="230" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="#ffffff">HDU</text>
+
+            <!-- 大门 -->
+            <rect x="282" y="310" width="36" height="67" rx="8" fill="#2563eb"/>
+            <path d="M300 315v57" fill="none" stroke="#93c5fd" stroke-width="2"/>
+
+            <!-- 门前台阶 -->
+            <rect x="272" y="377" width="56" height="7" rx="3" fill="#cbd5e1"/>
+            <rect x="264" y="384" width="72" height="7" rx="3" fill="#dbe4ef"/>
+
+            <!-- 左侧大树 -->
+            <g>
+              <rect x="80" y="332" width="10" height="44" rx="5" fill="#a16207"/>
+              <circle cx="85" cy="318" r="30" fill="#86efac"/>
+              <circle cx="66" cy="330" r="20" fill="#6ee7b7"/>
+              <circle cx="104" cy="330" r="18" fill="#34d399" opacity=".92"/>
+            </g>
+
+            <!-- 右侧大树 -->
+            <g>
+              <rect x="518" y="332" width="10" height="44" rx="5" fill="#a16207"/>
+              <circle cx="523" cy="318" r="30" fill="#86efac"/>
+              <circle cx="504" cy="330" r="20" fill="#6ee7b7"/>
+              <circle cx="542" cy="330" r="18" fill="#34d399" opacity=".92"/>
+            </g>
+
+            <!-- 前景灌木 -->
+            <g fill="#86efac">
+              <ellipse cx="170" cy="400" rx="36" ry="16"/>
+              <ellipse cx="205" cy="404" rx="26" ry="12"/>
+              <ellipse cx="430" cy="402" rx="34" ry="15"/>
+              <ellipse cx="462" cy="406" rx="24" ry="11"/>
+            </g>
+
+            <!-- 草地上的小花 -->
+            <g fill="#ffffff" opacity=".9">
+              <circle cx="135" cy="424" r="3"/>
+              <circle cx="164" cy="432" r="2.5"/>
+              <circle cx="455" cy="428" r="3"/>
+              <circle cx="484" cy="418" r="2.5"/>
+            </g>
+            <g fill="#fde68a">
+              <circle cx="246" cy="426" r="3"/>
+              <circle cx="356" cy="432" r="2.5"/>
+            </g>
+          </svg>
+        </div>
+
+        <!-- 插画上的浮动信息卡（装饰用，不参与读屏） -->
+        <div class="float-card float-map" aria-hidden="true">
+          <span class="float-icon">
+            <svg class="icon" aria-hidden="true"><use href="#i-map"></use></svg>
+          </span>
+          <span>
+            <strong>校园地图</strong>
+            <small>教学楼 · 食堂 · 快递点</small>
+          </span>
+        </div>
+
+        <div class="float-card float-food" aria-hidden="true">
+          <span class="float-icon mint">
+            <svg class="icon" aria-hidden="true"><use href="#i-bowl"></use></svg>
+          </span>
+          <span>
+            <strong>周边外卖</strong>
+            <small>即将上线</small>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       PAGE: 服务入口
+       ============================================================ -->
+  <section class="services" id="services">
+    <div class="container">
+      <div class="section-heading">
+        <p class="eyebrow">CAMPUS SERVICES</p>
+        <h2>从这里，去校园的每个角落</h2>
+        <p>先把入口搭好，再一点点把真实信息填进来。</p>
+      </div>
+
+      <div class="service-grid">
+        <!-- 校园地图：已经在下方做出来了，点击直接定位到地图板块 -->
+        <a class="service-card tone-blue" href="#campus-map">
+          <span class="service-icon">
+            <svg class="icon" aria-hidden="true"><use href="#i-map"></use></svg>
+          </span>
+          <h3>校园地图</h3>
+          <p>点击示意地图上的标记点，快速找到图书馆、食堂和体育馆。</p>
+          <span class="service-foot">
+            <span class="status live"><span class="dot"></span>已上线</span>
+            <span class="service-arrow">
+              <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+            </span>
+          </span>
+        </a>
+
+        <!-- 每楼地图查询 -->
+        <a class="service-card tone-mint" href="#" data-feature="building">
+          <span class="service-icon">
+            <svg class="icon" aria-hidden="true"><use href="#i-building"></use></svg>
+          </span>
+          <h3>每楼地图查询</h3>
+          <p>按楼栋查看楼层分布、教室编号和出入口位置。</p>
+          <span class="service-foot">
+            <span class="status soon"><span class="dot"></span>规划中</span>
+            <span class="service-arrow">
+              <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+            </span>
+          </span>
+        </a>
+
+        <!-- 周边外卖 -->
+        <a class="service-card tone-amber" href="#" data-feature="food">
+          <span class="service-icon">
+            <svg class="icon" aria-hidden="true"><use href="#i-bowl"></use></svg>
+          </span>
+          <h3>周边外卖</h3>
+          <p>看看校门口和周边的美食，下单前先做功课。</p>
+          <span class="service-foot">
+            <span class="status soon"><span class="dot"></span>规划中</span>
+            <span class="service-arrow">
+              <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+            </span>
+          </span>
+        </a>
+
+        <!-- 校园生活：先保留入口 -->
+        <a class="service-card tone-violet" href="#" data-feature="life">
+          <span class="service-icon">
+            <svg class="icon" aria-hidden="true"><use href="#i-heart"></use></svg>
+          </span>
+          <h3>校园生活</h3>
+          <p>社团、活动、失物招领和二手交换，慢慢补齐。</p>
+          <span class="service-foot">
+            <span class="status placeholder"><span class="dot"></span>占位</span>
+            <span class="service-arrow">
+              <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+            </span>
+          </span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       PAGE: 校园地图
+       - 地图上的色块是示意区域，标记点和地点列表由 JS 数据生成
+       - 想换真实地图：给 .map-canvas 加 background-image 即可
+       ============================================================ -->
+  <section class="campus-map" id="campus-map">
+    <div class="container">
+      <div class="section-heading">
+        <p class="eyebrow">CAMPUS MAP</p>
+        <h2>校园地图，一眼找到要去的地方</h2>
+        <p>点击地图上的标记点查看地点介绍，也可以在下方列表里直接选择。</p>
+      </div>
+
+      <div class="map-card">
+        <div class="map-toolbar">
+          <span class="map-toolbar-title">
+            <svg class="icon" aria-hidden="true"><use href="#i-map"></use></svg>
+            杭电校园示意图
+          </span>
+          <span class="map-hint">点击标记点查看地点介绍</span>
+        </div>
+
+        <div class="map-canvas" id="mapCanvas" aria-label="杭电校园示意图，包含图书馆、第一教学楼、学生食堂、行政楼、宿舍区和体育馆六个地点">
+          <!-- 占位说明：替换成真实图片后可以删掉这一行 -->
+          <span class="map-placeholder-tag">校园地图位置 · 示意图</span>
+
+          <!-- 底图：道路、绿地和水面，用纯 SVG 绘制，不依赖图片 -->
+          <svg class="map-drawing" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <ellipse cx="110" cy="520" rx="130" ry="66" fill="#d9ecff"/>
+            <ellipse cx="900" cy="105" rx="115" ry="62" fill="#dcfce7" opacity=".8"/>
+            <ellipse cx="70" cy="80" rx="80" ry="44" fill="#dcfce7" opacity=".55"/>
+
+            <path d="M0 320H1000" stroke="#ffffff" stroke-width="64"/>
+            <path d="M575 0V600" stroke="#ffffff" stroke-width="52"/>
+            <path d="M0 320H1000" stroke="#dbeafe" stroke-width="3" stroke-dasharray="14 16"/>
+            <path d="M575 0V600" stroke="#dbeafe" stroke-width="3" stroke-dasharray="14 16"/>
+
+            <path d="M-20 575C210 505 390 520 575 500s270-45 445-75" fill="none" stroke="#ffffff" stroke-width="32"/>
+            <path d="M-20 575C210 505 390 520 575 500s270-45 445-75" fill="none" stroke="#e2e8f0" stroke-width="2" stroke-dasharray="10 12"/>
+
+            <circle cx="575" cy="320" r="24" fill="#f8fbff" stroke="#dbeafe" stroke-width="3"/>
+            <circle cx="575" cy="320" r="8" fill="#bfdbfe"/>
+          </svg>
+
+          <!-- 六个示意区域；里面的标记点由 JavaScript 按同一组百分比坐标生成 -->
+          <div class="map-zone zone-library" aria-hidden="true"><span>学习空间</span></div>
+          <div class="map-zone zone-teaching" aria-hidden="true"><span>教学区</span></div>
+          <div class="map-zone zone-canteen" aria-hidden="true"><span>餐饮区</span></div>
+          <div class="map-zone zone-admin" aria-hidden="true"><span>行政办公</span></div>
+          <div class="map-zone zone-dorm" aria-hidden="true"><span>生活区</span></div>
+          <div class="map-zone zone-gym" aria-hidden="true"><span>运动区</span></div>
+
+          <!-- 点击标记点后出现的地点介绍卡，位置由 JS 计算 -->
+          <div class="map-popup" id="mapPopup" role="dialog" aria-modal="false"
+               aria-labelledby="mapPopupTitle" aria-describedby="mapPopupDesc" hidden>
+            <button class="map-popup-close" id="mapPopupClose" type="button" aria-label="关闭地点介绍">
+              <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+            </button>
+            <span class="map-popup-tag" id="mapPopupTag">学习空间</span>
+            <h3 id="mapPopupTitle">图书馆</h3>
+            <p id="mapPopupDesc">地点介绍会显示在这里。</p>
+          </div>
+
+          <!-- 屏幕阅读器播报用；视觉上看不到 -->
+          <div class="sr-only" id="mapLive" aria-live="polite"></div>
+        </div>
+
+        <!-- 演示数据说明：按要求明确标注 -->
+        <div class="map-footnote">
+          <span class="map-demo-badge">DEMO DATA</span>
+          <span>数据为演示用，可后续替换为真实数据；地图为示意布局，不代表真实比例。</span>
+        </div>
+      </div>
+
+      <!-- 地点列表：和地图上的标记点共用同一组数据 -->
+      <div class="location-panel">
+        <div class="location-panel-head">
+          <h3>主要地点</h3>
+          <span id="locationCount">6 个演示地点</span>
+        </div>
+        <div class="location-grid" id="locationList" aria-label="校园地点列表"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       PAGE: 原型说明条
+       ============================================================ -->
+  <section class="prototype-note">
+    <div class="container">
+      <div class="note-card">
+        <span class="note-icon">
+          <svg class="icon" aria-hidden="true"><use href="#i-sparkles"></use></svg>
+        </span>
+        <div class="note-copy">
+          <h3>校园地图 v0.2 已上线</h3>
+          <p>首页与校园地图已经可以演示，地点数据为模拟数据。每楼查询、周边外卖和校园生活会按计划逐步补齐。</p>
+        </div>
+        <span class="note-badge">v0.2</span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ============================================================
+     PAGE: 页脚
+     ============================================================ -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-main">
+      <!-- 页脚品牌与简介 -->
+      <div>
+        <a class="footer-brand brand" href="#home" aria-label="返回杭电综合服务网页首页">
+          <span class="brand-mark">HDU</span>
+          <span class="brand-copy">
+            <strong>杭电综合服务网页</strong>
+            <small>HDU CAMPUS HUB</small>
+          </span>
+        </a>
+        <p class="footer-desc">面向杭州电子科技大学在校生的校园信息入口。先把首页做好，再一步步长大。</p>
+      </div>
+
+      <!-- 页脚栏目 -->
+      <nav class="footer-links" aria-label="页脚导航">
+        <a class="footer-link" href="#home">首页</a>
+        <a class="footer-link" href="#campus-map">校园地图</a>
+        <button class="footer-link" type="button" data-feature="building">每楼地图查询</button>
+        <button class="footer-link" type="button" data-feature="food">周边外卖</button>
+        <button class="footer-link" type="button" data-feature="life">校园生活</button>
+      </nav>
+    </div>
+
+    <!-- 版权信息 -->
+    <div class="footer-bottom">
+      <span>© <span id="year">2026</span> 杭电综合服务网页 · 仅供学习与原型演示</span>
+      <span>非杭州电子科技大学官方页面</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ============================================================
+     PAGE: “建设中”弹窗
+     所有非首页栏目暂时共用这一个弹窗
+     ============================================================ -->
+<div class="modal" id="comingSoon" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalDesc" hidden>
+  <div class="modal-backdrop" data-close></div>
+
+  <div class="modal-card">
+    <button class="modal-close" id="modalClose" type="button" aria-label="关闭弹窗">
+      <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+    </button>
+
+    <div class="modal-head">
+      <span class="modal-icon" id="modalIcon" aria-hidden="true"></span>
+      <span class="modal-tag">COMING SOON</span>
+    </div>
+
+    <h2 id="modalTitle">「校园地图」正在建设中</h2>
+    <p id="modalDesc">这个板块还在整理中，之后会逐步上线。</p>
+    <p class="modal-note">这是一个学生原型，功能会按计划逐步补齐。</p>
+
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="modalOk" type="button">先看看首页</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* ============================================================
+     FEATURES 配置：改这里就能改三个占位板块的弹窗文案
+     校园地图已经有独立板块，不再走这个弹窗
+     ============================================================ */
+  const FEATURES = {
+    building: {
+      name: "每楼地图查询",
+      icon: "building",
+      desc: "每楼地图查询会支持按楼栋查看楼层分布、教室编号和出入口位置，目前还在规划中。"
+    },
+    food: {
+      name: "周边外卖",
+      icon: "bowl",
+      desc: "周边外卖板块会汇总校门口与周边的餐饮信息，帮助你更快做选择，目前还在规划中。"
+    },
+    life: {
+      name: "校园生活",
+      icon: "heart",
+      desc: "校园生活板块计划放社团、活动、失物招领和二手交换，先给它留一个位置。"
+    }
+  };
+
+  /* ============================================================
+     CAMPUS_LOCATIONS：校园地图的演示数据
+     ⚠ 数据为演示用，可后续替换为真实数据。
+     每一项的含义：
+       id       唯一标识，地图标记和列表按钮靠它对应
+       name     地点名称
+       category 分类，显示在弹窗小标签和列表里
+       area     大致方位，显示在列表里
+       desc     一句简单介绍，显示在弹窗里
+       x / y    标记点在地图上的百分比位置（左上角为 0，右下角为 100）
+       tone     配色，可选 blue / mint / amber / indigo / violet / rose
+       icon     列表图标，对应页面顶部的 SVG 图标库
+     ============================================================ */
+  const CAMPUS_LOCATIONS = [
+    {
+      id: "library",
+      name: "图书馆",
+      category: "学习空间",
+      area: "校园北侧",
+      desc: "自习、借阅和查资料的主要场所，考试周座位会比较紧张。",
+      x: 20,
+      y: 24,
+      tone: "blue",
+      icon: "book"
+    },
+    {
+      id: "teaching",
+      name: "第一教学楼",
+      category: "教学区",
+      area: "校园东北侧",
+      desc: "公共课和专业课的主要教学楼，上课前记得先确认教室楼层。",
+      x: 77.5,
+      y: 23,
+      tone: "mint",
+      icon: "building"
+    },
+    {
+      id: "canteen",
+      name: "学生食堂",
+      category: "餐饮区",
+      area: "校园中心",
+      desc: "靠近主路的综合食堂，午餐高峰期建议错峰前往。",
+      x: 47,
+      y: 41.5,
+      tone: "amber",
+      icon: "bowl"
+    },
+    {
+      id: "admin",
+      name: "行政楼",
+      category: "行政办公",
+      area: "校园西侧",
+      desc: "办理证明、学籍和校园事务的办公地点，工作日开放。",
+      x: 19.5,
+      y: 71.5,
+      tone: "indigo",
+      icon: "flag"
+    },
+    {
+      id: "dorm",
+      name: "宿舍区",
+      category: "生活区",
+      area: "校园南侧",
+      desc: "学生宿舍与生活配套集中的区域，快递点也在附近。",
+      x: 46,
+      y: 73,
+      tone: "violet",
+      icon: "bed"
+    },
+    {
+      id: "gym",
+      name: "体育馆",
+      category: "运动区",
+      area: "校园东南侧",
+      desc: "体育课、球类活动和晚间锻炼的主要场地，部分时段需要预约。",
+      x: 78,
+      y: 72,
+      tone: "rose",
+      icon: "dumbbell"
+    }
+  ];
+
+  /* ============================================================
+     获取页面元素
+     ============================================================ */
+  const menuBtn = document.getElementById("menuBtn");
+  const mobileMenu = document.getElementById("mobileMenu");
+
+  const modal = document.getElementById("comingSoon");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalDesc = document.getElementById("modalDesc");
+  const modalIcon = document.getElementById("modalIcon");
+  const modalClose = document.getElementById("modalClose");
+  const modalOk = document.getElementById("modalOk");
+  const modalBackdrop = modal.querySelector(".modal-backdrop");
+
+  // 校园地图相关元素
+  const mapCanvas = document.getElementById("mapCanvas");
+  const mapCard = document.querySelector(".map-card");
+  const mapPopup = document.getElementById("mapPopup");
+  const mapPopupTag = document.getElementById("mapPopupTag");
+  const mapPopupTitle = document.getElementById("mapPopupTitle");
+  const mapPopupDesc = document.getElementById("mapPopupDesc");
+  const mapPopupClose = document.getElementById("mapPopupClose");
+  const mapLive = document.getElementById("mapLive");
+  const locationList = document.getElementById("locationList");
+  const locationCount = document.getElementById("locationCount");
+
+  // 记住弹窗打开前的焦点元素，关闭后把焦点还回去
+  let lastFocused = null;
+
+  /* ============================================================
+     小工具：根据名字生成一个内联 SVG 图标
+     ============================================================ */
+  function iconMarkup(name) {
+    return `<svg class="icon" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
+  }
+
+  /* ============================================================
+     移动端菜单：打开、关闭、切换图标与无障碍状态
+     ============================================================ */
+  function setMenu(open) {
+    mobileMenu.classList.toggle("is-open", open);
+    menuBtn.classList.toggle("is-open", open);
+    menuBtn.setAttribute("aria-expanded", String(open));
+    menuBtn.setAttribute("aria-label", open ? "关闭菜单" : "打开菜单");
+  }
+
+  menuBtn.addEventListener("click", () => {
+    setMenu(!mobileMenu.classList.contains("is-open"));
+  });
+
+  // 点击菜单外部时自动收起，避免菜单一直挡着页面
+  document.addEventListener("click", (event) => {
+    if (!mobileMenu.classList.contains("is-open")) return;
+    if (event.target.closest && event.target.closest(".site-header")) return;
+    setMenu(false);
+  });
+
+  // 窗口变宽到电脑尺寸时，收起手机菜单
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 860) setMenu(false);
+  });
+
+  // 点击手机菜单里的“首页”后，收起菜单
+  mobileMenu.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => setMenu(false));
+  });
+
+  /* ============================================================
+     占位弹窗：打开与关闭
+     ============================================================ */
+  function openModal(featureKey, trigger) {
+    const feature = FEATURES[featureKey];
+    if (!feature) return;
+
+    // 如果地图上还有打开的地点介绍，先收起来，避免被弹窗盖住
+    closeMapPopup({ restoreFocus: false });
+
+    // 如果是从手机菜单里点进来的，关闭弹窗后把焦点还给菜单按钮
+    // 因为原来的菜单项在弹窗关闭时已经收起来了
+    if (trigger && trigger.closest(".mobile-menu")) {
+      lastFocused = menuBtn;
+    } else {
+      lastFocused = trigger || document.activeElement;
+    }
+
+    // 填入对应板块的文案与图标
+    modalTitle.textContent = `「${feature.name}」正在建设中`;
+    modalDesc.textContent = feature.desc;
+    modalIcon.innerHTML = iconMarkup(feature.icon);
+
+    // 显示弹窗并锁住页面滚动
+    modal.hidden = false;
+    document.body.classList.add("modal-open");
+    modalClose.focus();
+  }
+
+  function closeModal() {
+    modal.hidden = true;
+    document.body.classList.remove("modal-open");
+
+    // 把键盘焦点还给刚才触发弹窗的元素
+    if (lastFocused && typeof lastFocused.focus === "function") {
+      lastFocused.focus();
+    }
+  }
+
+  // 所有带 data-feature 的按钮和卡片，统一打开对应弹窗
+  document.querySelectorAll("[data-feature]").forEach((trigger) => {
+    trigger.addEventListener("click", (event) => {
+      event.preventDefault();
+      setMenu(false);
+      openModal(trigger.dataset.feature, trigger);
+    });
+  });
+
+  // 三种关闭方式：右上角按钮、底部按钮、点击遮罩
+  modalClose.addEventListener("click", closeModal);
+  modalOk.addEventListener("click", closeModal);
+  modalBackdrop.addEventListener("click", closeModal);
+
+  // 点击弹窗卡片的白色内边距区域也能关闭
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) closeModal();
+  });
+
+  /* ============================================================
+     校园地图：生成标记点、地点列表与介绍弹窗
+     ============================================================ */
+
+  // 用 Map 记住每个地点的标记点和列表按钮，方便切换选中状态
+  const mapPins = new Map();
+  const locationButtons = new Map();
+  let activeLocationId = null;
+  let lastMapTrigger = null;
+
+  // 判断用户是否开启了“减少动态效果”，开启时不做平滑滚动
+  function prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  // 根据 CAMPUS_LOCATIONS 一次性生成地图标记和下方列表
+  CAMPUS_LOCATIONS.forEach((loc) => {
+    // --- 地图上的标记点 ---
+    const pin = document.createElement("button");
+    pin.type = "button";
+    pin.className = `map-pin tone-${loc.tone}`;
+    pin.dataset.location = loc.id;
+    pin.style.setProperty("--x", `${loc.x}%`);
+    pin.style.setProperty("--y", `${loc.y}%`);
+    pin.setAttribute("aria-label", `${loc.name}，点击查看地点介绍`);
+    pin.setAttribute("aria-pressed", "false");
+    pin.innerHTML = `
+      <svg class="icon" aria-hidden="true"><use href="#i-pin"></use></svg>
+      <span class="map-pin-label" aria-hidden="true">${loc.name}</span>
+    `;
+    pin.addEventListener("click", (event) => {
+      event.stopPropagation();
+      selectLocation(loc.id, pin);
+    });
+    mapCanvas.appendChild(pin);
+    mapPins.set(loc.id, pin);
+
+    // --- 下方的地点列表按钮 ---
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = `location-item tone-${loc.tone}`;
+    item.dataset.location = loc.id;
+    item.setAttribute("aria-pressed", "false");
+    item.innerHTML = `
+      <span class="location-icon">
+        <svg class="icon" aria-hidden="true"><use href="#i-${loc.icon}"></use></svg>
+      </span>
+      <span class="location-copy">
+        <strong>${loc.name}</strong>
+        <small>${loc.category} · ${loc.area}</small>
+      </span>
+      <svg class="icon location-arrow" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+    `;
+    item.addEventListener("click", () => {
+      selectLocation(loc.id, item);
+      // 列表在地图下方，选中后回到地图，让用户看到对应的标记点
+      mapCard.scrollIntoView({
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
+        block: "center"
+      });
+    });
+    locationList.appendChild(item);
+    locationButtons.set(loc.id, item);
+  });
+
+  // 地点数量自动跟随数据变化，改数据不用再改文字
+  locationCount.textContent = `${CAMPUS_LOCATIONS.length} 个演示地点`;
+
+  // 把介绍弹窗放到标记点旁边：优先放在上方，空间不够就放到下方
+  function positionMapPopup() {
+    const pin = mapPins.get(activeLocationId);
+    if (!pin || mapPopup.hidden) return;
+
+    const canvasRect = mapCanvas.getBoundingClientRect();
+    const pinRect = pin.getBoundingClientRect();
+    const popupRect = mapPopup.getBoundingClientRect();
+
+    const pad = 12;
+    const gap = 14;
+    const pinCenterX = pinRect.left - canvasRect.left + pinRect.width / 2;
+
+    // 水平方向先以标记点为中心，再限制在地图范围内
+    let left = pinCenterX - popupRect.width / 2;
+    left = Math.min(
+      Math.max(left, pad),
+      Math.max(pad, canvasRect.width - popupRect.width - pad)
+    );
+
+    // 垂直方向：上方放不下就翻到标记点下方
+    let top = pinRect.top - canvasRect.top - popupRect.height - gap;
+    let side = "top";
+    if (top < pad) {
+      top = pinRect.bottom - canvasRect.top + gap;
+      side = "bottom";
+    }
+
+    mapPopup.style.left = `${left}px`;
+    mapPopup.style.top = `${top}px`;
+    mapPopup.dataset.side = side;
+
+    // 让弹窗小三角始终对准标记点，又不会跑出卡片边缘
+    const arrowX = Math.min(
+      Math.max(pinCenterX - left, 20),
+      popupRect.width - 20
+    );
+    mapPopup.style.setProperty("--arrow-x", `${arrowX}px`);
+  }
+
+  // 选中某个地点：更新弹窗内容、高亮标记点和列表项
+  function selectLocation(locationId, trigger) {
+    const loc = CAMPUS_LOCATIONS.find((item) => item.id === locationId);
+    if (!loc) return;
+
+    activeLocationId = locationId;
+    lastMapTrigger = trigger || null;
+
+    mapPopup.className = `map-popup tone-${loc.tone}`;
+    mapPopupTag.textContent = loc.category;
+    mapPopupTitle.textContent = loc.name;
+    mapPopupDesc.textContent = loc.desc;
+    mapPopup.hidden = false;
+
+    mapPins.forEach((pin, key) => {
+      pin.setAttribute("aria-pressed", String(key === locationId));
+    });
+    locationButtons.forEach((button, key) => {
+      button.setAttribute("aria-pressed", String(key === locationId));
+    });
+
+    positionMapPopup();
+    // 等一帧再量一次，避免字体或布局刚变化时位置有偏差
+    requestAnimationFrame(positionMapPopup);
+
+    // 屏幕阅读器会读出这句话
+    mapLive.textContent = `${loc.name}，${loc.category}。${loc.desc}`;
+  }
+
+  // 关闭地点介绍
+  function closeMapPopup({ restoreFocus = true } = {}) {
+    if (mapPopup.hidden) return;
+
+    mapPopup.hidden = true;
+    activeLocationId = null;
+
+    mapPins.forEach((pin) => pin.setAttribute("aria-pressed", "false"));
+    locationButtons.forEach((button) => button.setAttribute("aria-pressed", "false"));
+
+    // 用键盘关闭时，把焦点还给打开它的标记点或列表项
+    if (restoreFocus && lastMapTrigger) lastMapTrigger.focus();
+    lastMapTrigger = null;
+  }
+
+  // 点击地图空白处收起介绍
+  mapCanvas.addEventListener("click", (event) => {
+    if (event.target.closest(".map-pin") || event.target.closest(".map-popup")) return;
+    closeMapPopup({ restoreFocus: false });
+  });
+
+  mapPopupClose.addEventListener("click", () => closeMapPopup());
+
+  // 窗口尺寸变化时重新计算弹窗位置（例如从手机横屏切回竖屏）
+  window.addEventListener("resize", positionMapPopup);
+
+  /* ============================================================
+     顶部导航高亮：滚动到「首页」或「校园地图」时同步下划线
+     ============================================================ */
+  const navAnchors = Array.from(
+    document.querySelectorAll('.desktop-nav a.nav-link[href^="#"]')
+  );
+  const navSections = navAnchors
+    .map((link) => document.querySelector(link.getAttribute("href")))
+    .filter(Boolean);
+
+  function setActiveNav(activeLink) {
+    navAnchors.forEach((link) => {
+      const isActive = link === activeLink;
+      link.classList.toggle("is-active", isActive);
+      if (isActive) {
+        link.setAttribute("aria-current", link.getAttribute("href") === "#home" ? "page" : "location");
+      } else {
+        link.removeAttribute("aria-current");
+      }
+    });
+
+    // 手机菜单里的“当前页面”小标签也跟着切换
+    document.querySelectorAll(".mobile-current").forEach((tag) => {
+      tag.hidden = tag.dataset.currentFor !== activeLink.getAttribute("href");
+    });
+  }
+
+  if ("IntersectionObserver" in window && navSections.length) {
+    const navObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const activeLink = navAnchors.find(
+            (link) => link.getAttribute("href") === `#${entry.target.id}`
+          );
+          if (activeLink) setActiveNav(activeLink);
+        });
+      },
+      // 只关注屏幕中间的一条窄带，避免两个板块同时判定为“当前”
+      { rootMargin: "-45% 0px -45% 0px", threshold: 0 }
+    );
+    navSections.forEach((section) => navObserver.observe(section));
+  }
+
+  // 按 Esc 关闭弹窗；如果弹窗没开，则关闭地图上的地点介绍
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (!modal.hidden) {
+      closeModal();
+      return;
+    }
+    closeMapPopup();
+  });
+
+  // 弹窗打开时，用 Tab 只在弹窗内部循环
+  modal.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab") return;
+
+    const focusable = Array.from(modal.querySelectorAll("button:not([disabled])"));
+    if (!focusable.length) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+
+  /* ============================================================
+     页脚年份：自动跟随当前年份
+     ============================================================ */
+  document.getElementById("year").textContent = new Date().getFullYear();
+})();
+</script>
+</body>
+</html>
