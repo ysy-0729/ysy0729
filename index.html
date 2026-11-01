@@ -17,14 +17,18 @@
   2. 改顶部导航            → 搜索「PAGE: 顶部导航」
   3. 改欢迎标语与简介      → 搜索「PAGE: 首屏欢迎区」
   4. 改服务入口卡片        → 搜索「PAGE: 服务入口」
-  5. 改校园地图与地点数据  → 搜索「CAMPUS_LOCATIONS」
-  6. 改占位弹窗文案        → 搜索「FEATURES 配置」
-  7. 改页脚与版权          → 搜索「PAGE: 页脚」
+  5. 改校园地图的楼栋与道路 → 搜索「PAGE: 校园地图」
+  6. 改校园地图地点数据      → 搜索「CAMPUS_LOCATIONS」
+  7. 改占位弹窗文案          → 搜索「FEATURES 配置」
+  8. 改页脚与版权            → 搜索「PAGE: 页脚」
 
-  说明：整页只有一个 HTML 文件，CSS 与 JavaScript 都写在文件内部。
+  说明：整页的 CSS、JavaScript 和校园地图都是写在这个文件内部的，
+  不依赖任何图片文件或网络资源，双击 index.html 就能打开。
+  校园地图是用代码画出来的平面俯视示意图（根据学校手绘地图重绘），
+  不是把照片直接贴上去；想要调整楼栋位置，改 SVG 里的坐标即可。
   当前版本完成首页与校园地图；楼宇查询、外卖和校园生活先以弹窗占位。
-  地图上的地点数据集中在脚本的 CAMPUS_LOCATIONS 里，位置用百分比坐标，
-  换成真实地图图片后只需微调这些坐标即可。
+  地图地点数据集中在脚本的 CAMPUS_LOCATIONS 里，位置用百分比坐标，
+  改完 SVG 布局后同步微调这些坐标，标记点就会重新对齐。
   ============================================================
 -->
 
@@ -902,117 +906,54 @@ svg { display: block; max-width: 100%; }
   box-shadow: 0 0 0 3px rgba(20, 184, 166, .14);
 }
 
-/* 地图画布：所有标记点都用百分比定位，换图片后坐标也能复用 */
-.map-canvas {
+/* “左右滑动”提示只在手机上出现 */
+.map-hint-slide { display: none; }
+
+/* 地图视口：电脑上铺满卡片；手机上可以左右滑动查看完整地图 */
+.map-viewport {
   position: relative;
   overflow: hidden;
-  aspect-ratio: 16 / 9.2;
-  min-height: 460px;
-  border: 1px solid #dce9f9;
+  border: 1px solid #d8e7ea;
   border-radius: 20px;
-  background:
-    radial-gradient(circle at 16% 18%, rgba(59, 130, 246, .10), transparent 38%),
-    radial-gradient(circle at 86% 78%, rgba(20, 184, 166, .10), transparent 40%),
-    linear-gradient(rgba(148, 163, 184, .10) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, .10) 1px, transparent 1px),
-    #f3f8ff;
-  background-size: auto, auto, 42px 42px, 42px 42px, auto;
+  background: #eef5f2;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7);
 }
 
-/* 想换成真实地图时：给 .map-canvas 加上 background-image: url("图片地址");
-   再把 background-size 设为 cover，标记点会继续按百分比坐标落位。 */
+/* 地图画布：宽高比和 SVG 视图一致，标记点都按百分比坐标落位 */
+.map-canvas {
+  position: relative;
+  aspect-ratio: 1000 / 540;
+  overflow: hidden;
+  border-radius: inherit;
+}
 
-.map-drawing {
+/* 平面示意图：按学校手绘地图重绘，全部用 SVG 画，不依赖外部图片 */
+.map-plan {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 0;
-  pointer-events: none;
+  display: block;
 }
 
-/* 图左上角的占位说明，换成真实地图后可以删除 */
-.map-placeholder-tag {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  z-index: 3;
-  padding: 5px 10px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, .9);
+/* SVG 里的文字，和页面用同一套字体 */
+.plan-label {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  fill: #43564d;
+  paint-order: stroke;
+  stroke: #f8fbf8;
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
+}
+
+.plan-label.small {
   font-size: 10px;
   font-weight: 600;
-  color: var(--ink-500);
-  pointer-events: none;
-}
-
-/* 地图上的大色块，用来示意不同功能区域 */
-.map-zone {
-  position: absolute;
-  display: flex;
-  align-items: flex-start;
-  padding: 8px 10px;
-  border: 1px dashed currentColor;
-  border-radius: 14px;
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: .02em;
-  pointer-events: none;
-}
-
-.zone-library {
-  left: 8%;
-  top: 12%;
-  width: 24%;
-  height: 20%;
-  background: rgba(37, 99, 235, .09);
-  color: rgba(29, 78, 216, .72);
-}
-
-.zone-teaching {
-  left: 64%;
-  top: 11%;
-  width: 27%;
-  height: 22%;
-  background: rgba(13, 148, 136, .10);
-  color: rgba(15, 118, 110, .72);
-}
-
-.zone-canteen {
-  left: 38%;
-  top: 34%;
-  width: 18%;
-  height: 15%;
-  background: rgba(217, 119, 6, .10);
-  color: rgba(180, 83, 9, .75);
-}
-
-.zone-admin {
-  left: 9%;
-  top: 62%;
-  width: 21%;
-  height: 19%;
-  background: rgba(79, 70, 229, .09);
-  color: rgba(67, 56, 202, .72);
-}
-
-.zone-dorm {
-  left: 36%;
-  top: 62%;
-  width: 19%;
-  height: 22%;
-  background: rgba(124, 58, 237, .09);
-  color: rgba(109, 40, 217, .72);
-}
-
-.zone-gym {
-  left: 65%;
-  top: 60%;
-  width: 26%;
-  height: 24%;
-  background: rgba(225, 29, 72, .08);
-  color: rgba(190, 18, 60, .72);
+  letter-spacing: .04em;
+  fill: #8fa39a;
+  stroke-width: 2.5px;
 }
 
 /* 地图标记点：由 JavaScript 根据地点数据生成 */
@@ -1030,7 +971,8 @@ svg { display: block; max-width: 100%; }
   border-radius: 50%;
   background: var(--tone, var(--blue-600));
   color: #fff;
-  box-shadow: 0 9px 20px -7px rgba(15, 30, 53, .55);
+  /* 底图颜色比较丰富，加一圈白色光晕让标记点更醒目 */
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .4), 0 9px 20px -7px rgba(15, 30, 53, .55);
   transform: translate(-50%, -50%);
   transition: transform .18s ease, box-shadow .18s ease;
 }
@@ -1068,30 +1010,6 @@ svg { display: block; max-width: 100%; }
 
 .map-pin[aria-pressed="true"]::before {
   animation: pin-pulse 1.8s ease-out infinite;
-}
-
-/* 选中的标记点不再显示小名字，避免和介绍弹窗重叠 */
-.map-pin[aria-pressed="true"] .map-pin-label {
-  opacity: 0;
-}
-
-/* 标记点下方的小名字；手机上会缩小字号，避免太挤 */
-.map-pin-label {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 50%;
-  padding: 3px 8px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, .94);
-  font-size: 10px;
-  font-weight: 650;
-  line-height: 1.4;
-  color: var(--ink-700);
-  white-space: nowrap;
-  box-shadow: var(--shadow-sm);
-  transform: translateX(-50%);
-  pointer-events: none;
 }
 
 @keyframes pin-pulse {
@@ -1604,7 +1522,6 @@ svg { display: block; max-width: 100%; }
   }
 
   .campus-map { padding: 28px 0 20px; }
-  .map-canvas { min-height: 430px; }
 
   .footer-main {
     grid-template-columns: 1fr;
@@ -1638,34 +1555,38 @@ svg { display: block; max-width: 100%; }
 
   .float-card { display: none; }
 
-  /* 手机上的地图：固定高度，隐藏区域文字和小标签，保证标记点够大 */
+  /* 手机上的地图：画布放宽到 700px，左右滑动查看，标记点也能保持好点按的尺寸 */
   .map-card { padding: 12px; border-radius: 22px; }
 
   .map-toolbar { padding: 2px 4px 10px; }
   .map-hint { font-size: 10.5px; }
+  .map-hint-slide { display: inline; }
 
-  .map-canvas {
-    aspect-ratio: auto;
-    height: 460px;
-    min-height: 0;
+  .map-viewport {
+    overflow-x: auto;
+    overflow-y: hidden;
     border-radius: 16px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
   }
 
-  .map-zone { padding: 0; }
-  .map-zone span { display: none; }
+  .map-canvas {
+    width: 700px;
+    height: 378px;
+    aspect-ratio: auto;
+  }
+
+  /* 地图整体缩到 70%，文字同步放大一点，手机上才看得清 */
+  .plan-label { font-size: 15px; stroke-width: 3px; }
+  .plan-label.small { font-size: 11.5px; stroke-width: 2px; }
 
   .map-pin {
     width: 34px;
     height: 34px;
   }
 
-  .map-pin-label {
-    top: calc(100% + 5px);
-    padding: 2px 6px;
-    font-size: 9px;
-  }
-
-  .map-popup { padding: 14px 32px 14px 14px; }  .map-popup p { font-size: 11.5px; }
+  .map-popup { padding: 14px 32px 14px 14px; }
+  .map-popup p { font-size: 11.5px; }
 
   .map-footnote { padding: 10px 4px 2px; }
 
@@ -1707,7 +1628,6 @@ svg { display: block; max-width: 100%; }
 
   .hero h1 { font-size: 34px; }
 
-  .map-canvas { height: 420px; }
   .map-pin { width: 32px; height: 32px; }
   .map-pin .icon { width: 16px; height: 16px; }
 
@@ -2170,8 +2090,9 @@ svg { display: block; max-width: 100%; }
 
   <!-- ============================================================
        PAGE: 校园地图
-       - 地图上的色块是示意区域，标记点和地点列表由 JS 数据生成
-       - 想换真实地图：给 .map-canvas 加 background-image 即可
+       - 底图是按学校手绘地图重绘的内联 SVG 平面示意图，无外部图片
+       - 标记点和地点列表都由 JS 里的 CAMPUS_LOCATIONS 生成
+       - 想改布局：直接改下面 SVG 里的形状坐标，再同步微调 x / y
        ============================================================ -->
   <section class="campus-map" id="campus-map">
     <div class="container">
@@ -2185,60 +2106,204 @@ svg { display: block; max-width: 100%; }
         <div class="map-toolbar">
           <span class="map-toolbar-title">
             <svg class="icon" aria-hidden="true"><use href="#i-map"></use></svg>
-            杭电校园示意图
+            杭电校园平面示意图
           </span>
-          <span class="map-hint">点击标记点查看地点介绍</span>
+          <span class="map-hint">点击标记点查看地点介绍<span class="map-hint-slide"> · 手机上可左右滑动</span></span>
         </div>
 
-        <div class="map-canvas" id="mapCanvas" aria-label="杭电校园示意图，包含图书馆、第一教学楼、学生食堂、行政楼、宿舍区和体育馆六个地点">
-          <!-- 占位说明：替换成真实图片后可以删掉这一行 -->
-          <span class="map-placeholder-tag">校园地图位置 · 示意图</span>
+        <div class="map-viewport" id="mapViewport">
+          <div class="map-canvas" id="mapCanvas" aria-label="杭电绍兴校区平面示意图，包含正心楼、精诚楼、绍味堂、绍贤雅居、竞雄体育运动中心、青越文化活动中心和志越科创中心七个地点">
+            <!-- 底图：按学校手绘地图重绘的平面俯视示意图（内联 SVG，不依赖图片） -->
+            <svg class="map-plan" viewBox="0 0 1000 540" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+              <!-- 底色与校园边界 -->
+              <rect width="1000" height="540" fill="#f1f8f3"/>
+              <rect x="18" y="14" width="964" height="512" rx="66" fill="#f8fbf8" stroke="#e4efe8" stroke-width="1.5"/>
 
-          <!-- 底图：道路、绿地和水面，用纯 SVG 绘制，不依赖图片 -->
-          <svg class="map-drawing" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-            <ellipse cx="110" cy="520" rx="130" ry="66" fill="#d9ecff"/>
-            <ellipse cx="900" cy="105" rx="115" ry="62" fill="#dcfce7" opacity=".8"/>
-            <ellipse cx="70" cy="80" rx="80" ry="44" fill="#dcfce7" opacity=".55"/>
+              <!-- 草坪：北侧教学区、东北公寓区、西南运动区、东南科创区 -->
+              <rect x="112" y="58" width="378" height="172" rx="44" fill="#e2f1e5"/>
+              <rect x="582" y="50" width="340" height="170" rx="40" fill="#e6f3e8"/>
+              <rect x="58" y="284" width="360" height="198" rx="56" fill="#e0f0e4"/>
+              <rect x="548" y="298" width="416" height="182" rx="48" fill="#e4f2e7"/>
 
-            <path d="M0 320H1000" stroke="#ffffff" stroke-width="64"/>
-            <path d="M575 0V600" stroke="#ffffff" stroke-width="52"/>
-            <path d="M0 320H1000" stroke="#dbeafe" stroke-width="3" stroke-dasharray="14 16"/>
-            <path d="M575 0V600" stroke="#dbeafe" stroke-width="3" stroke-dasharray="14 16"/>
+              <!-- 河流：横穿校园，桥梁和道路压在上面 -->
+              <path d="M16 268C 120 248 200 292 300 274S 470 250 560 268S 760 296 984 262L 984 300C 760 332 680 306 560 306S 360 288 300 312S 110 286 16 306Z" fill="#cbe7f6" stroke="#b4dcef" stroke-width="1.5"/>
+              <path d="M24 281C 130 263 210 300 310 284S 470 262 560 280S 760 304 978 274" fill="none" stroke="#e6f5fc" stroke-width="4" stroke-linecap="round" opacity=".9"/>
 
-            <path d="M-20 575C210 505 390 520 575 500s270-45 445-75" fill="none" stroke="#ffffff" stroke-width="32"/>
-            <path d="M-20 575C210 505 390 520 575 500s270-45 445-75" fill="none" stroke="#e2e8f0" stroke-width="2" stroke-dasharray="10 12"/>
+              <!-- 道路：外圈环校路 + 校内主次道路 -->
+              <rect x="36" y="32" width="928" height="476" rx="62" fill="none" stroke="#e2ece5" stroke-width="28"/>
+              <rect x="36" y="32" width="928" height="476" rx="62" fill="none" stroke="#ffffff" stroke-width="21"/>
+              <g fill="none" stroke="#ffffff" stroke-linecap="round">
+                <!-- 东门 → 正心楼，正心楼 → 守正桥 → 西门 -->
+                <path d="M510 46V148" stroke-width="18"/>
+                <path d="M510 258V500" stroke-width="20"/>
+                <!-- 北门与信雅路 -->
+                <path d="M30 150C 92 150 122 120 152 98L 198 60" stroke-width="13"/>
+                <!-- 南门 → 笃学桥、力行桥 -->
+                <path d="M970 190H902V330" stroke-width="13"/>
+                <path d="M902 214C 872 226 858 244 848 268S 820 300 802 312V330" stroke-width="12"/>
+                <!-- 阳明桥、求知桥 -->
+                <path d="M226 196V292" stroke-width="13"/>
+                <path d="M356 256V300" stroke-width="10"/>
+                <!-- 致远路 -->
+                <path d="M74 198V330" stroke-width="12"/>
+                <!-- 组团之间的连接路 -->
+                <path d="M312 168C 350 200 392 218 446 226" stroke-width="11"/>
+                <path d="M662 180C 700 200 700 232 716 246" stroke-width="11"/>
+              </g>
 
-            <circle cx="575" cy="320" r="24" fill="#f8fbff" stroke="#dbeafe" stroke-width="3"/>
-            <circle cx="575" cy="320" r="8" fill="#bfdbfe"/>
-          </svg>
+              <!-- 五座桥：阳明桥、求知桥、守正桥、力行桥、笃学桥 -->
+              <g fill="#fbf6e9" stroke="#e5dcc6" stroke-width="1.5">
+                <rect x="209" y="260" width="34" height="48" rx="5"/>
+                <rect x="340" y="258" width="32" height="46" rx="5"/>
+                <rect x="492" y="256" width="36" height="52" rx="5"/>
+                <rect x="784" y="262" width="34" height="48" rx="5"/>
+                <rect x="884" y="258" width="32" height="50" rx="5"/>
+              </g>
+              <g stroke="#c9bda2" stroke-width="2" opacity=".8">
+                <path d="M211 266V302M241 266V302M342 264V298M370 264V298M494 262V302M526 262V302M786 268V304M816 268V304M886 264V302M914 264V302"/>
+              </g>
 
-          <!-- 六个示意区域；里面的标记点由 JavaScript 按同一组百分比坐标生成 -->
-          <div class="map-zone zone-library" aria-hidden="true"><span>学习空间</span></div>
-          <div class="map-zone zone-teaching" aria-hidden="true"><span>教学区</span></div>
-          <div class="map-zone zone-canteen" aria-hidden="true"><span>餐饮区</span></div>
-          <div class="map-zone zone-admin" aria-hidden="true"><span>行政办公</span></div>
-          <div class="map-zone zone-dorm" aria-hidden="true"><span>生活区</span></div>
-          <div class="map-zone zone-gym" aria-hidden="true"><span>运动区</span></div>
+              <!-- 绍信学生公寓 -->
+              <g>
+                <rect x="232" y="82" width="142" height="30" rx="4" fill="#ffffff" stroke="#d7e3dc"/>
+                <rect x="232" y="134" width="142" height="30" rx="4" fill="#ffffff" stroke="#d7e3dc"/>
+                <rect x="232" y="82" width="26" height="82" rx="4" fill="#ffffff" stroke="#d7e3dc"/>
+                <rect x="266" y="112" width="102" height="22" rx="4" fill="#d8efe0"/>
+                <rect x="344" y="88" width="24" height="18" rx="2" fill="#e3edf7"/>
+              </g>
 
-          <!-- 点击标记点后出现的地点介绍卡，位置由 JS 计算 -->
-          <div class="map-popup" id="mapPopup" role="dialog" aria-modal="false"
-               aria-labelledby="mapPopupTitle" aria-describedby="mapPopupDesc" hidden>
-            <button class="map-popup-close" id="mapPopupClose" type="button" aria-label="关闭地点介绍">
-              <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
-            </button>
-            <span class="map-popup-tag" id="mapPopupTag">学习空间</span>
-            <h3 id="mapPopupTitle">图书馆</h3>
-            <p id="mapPopupDesc">地点介绍会显示在这里。</p>
+              <!-- 创智楼 -->
+              <g>
+                <rect x="212" y="180" width="84" height="34" rx="4" fill="#ffffff" stroke="#d7e3dc"/>
+                <rect x="212" y="180" width="26" height="58" rx="4" fill="#ffffff" stroke="#d7e3dc"/>
+                <rect x="220" y="188" width="14" height="42" rx="2" fill="#e3edf7"/>
+              </g>
+
+              <!-- 绍味堂（食堂） -->
+              <g>
+                <rect x="420" y="108" width="76" height="30" rx="4" fill="#ffffff" stroke="#e6dcc6"/>
+                <rect x="448" y="136" width="16" height="12" rx="2" fill="#ffffff" stroke="#e6dcc6"/>
+                <rect x="430" y="148" width="62" height="26" rx="4" fill="#ffffff" stroke="#e6dcc6"/>
+                <rect x="428" y="114" width="60" height="12" rx="3" fill="#fbeccb"/>
+                <rect x="438" y="154" width="46" height="10" rx="3" fill="#fbeccb"/>
+              </g>
+
+              <!-- 正心楼（校园主楼） -->
+              <g>
+                <rect x="455" y="152" width="130" height="98" rx="7" fill="#ffffff" stroke="#d3e0da"/>
+                <rect x="486" y="176" width="68" height="50" rx="5" fill="#d8efe1"/>
+                <rect x="455" y="232" width="130" height="18" rx="6" fill="#fbe3c4"/>
+              </g>
+
+              <!-- 绍贤雅居（学生公寓） -->
+              <g>
+                <rect x="628" y="68" width="22" height="60" rx="3" fill="#ffffff" stroke="#d9d5ea"/>
+                <rect x="658" y="68" width="22" height="60" rx="3" fill="#ffffff" stroke="#d9d5ea"/>
+                <rect x="688" y="68" width="22" height="60" rx="3" fill="#ffffff" stroke="#d9d5ea"/>
+                <rect x="718" y="68" width="22" height="60" rx="3" fill="#ffffff" stroke="#d9d5ea"/>
+                <rect x="626" y="128" width="116" height="12" rx="3" fill="#ffffff" stroke="#d9d5ea"/>
+                <rect x="634" y="76" width="10" height="46" rx="2" fill="#eae5fb"/>
+                <rect x="664" y="76" width="10" height="46" rx="2" fill="#eae5fb"/>
+                <rect x="694" y="76" width="10" height="46" rx="2" fill="#eae5fb"/>
+                <rect x="724" y="76" width="10" height="46" rx="2" fill="#eae5fb"/>
+              </g>
+
+              <!-- 精诚楼 -->
+              <g>
+                <rect x="792" y="150" width="42" height="104" rx="5" fill="#ffffff" stroke="#d3e3dc"/>
+                <rect x="712" y="222" width="122" height="32" rx="5" fill="#ffffff" stroke="#d3e3dc"/>
+                <rect x="800" y="160" width="26" height="84" rx="3" fill="#d5f2e9"/>
+                <rect x="722" y="228" width="100" height="20" rx="3" fill="#d5f2e9"/>
+              </g>
+
+              <!-- 竞雄体育运动中心：田径场 + 室内馆 -->
+              <g>
+                <rect x="86" y="296" width="246" height="132" rx="66" fill="#f6c8c3" stroke="#eab3ac"/>
+                <rect x="96" y="306" width="226" height="112" rx="56" fill="none" stroke="#fbe0dc" stroke-width="2"/>
+                <rect x="106" y="314" width="206" height="96" rx="48" fill="#c5e6cc"/>
+                <rect x="128" y="330" width="162" height="64" rx="3" fill="none" stroke="#ffffff" stroke-width="1.6" opacity=".85"/>
+                <path d="M209 330V394M128 362H290" stroke="#ffffff" stroke-width="1.6" opacity=".85"/>
+                <circle cx="209" cy="362" r="12" fill="none" stroke="#ffffff" stroke-width="1.4" opacity=".8"/>
+
+                <rect x="372" y="342" width="120" height="86" rx="6" fill="#ffffff" stroke="#e6cfd3"/>
+                <rect x="382" y="352" width="100" height="26" rx="3" fill="#fbe0e3"/>
+                <rect x="382" y="390" width="100" height="14" rx="3" fill="#fbe0e3"/>
+              </g>
+
+              <!-- 青越文化活动中心 -->
+              <g>
+                <rect x="556" y="330" width="104" height="46" rx="5" fill="#ffffff" stroke="#d4dbf2"/>
+                <rect x="556" y="374" width="30" height="44" rx="4" fill="#ffffff" stroke="#d4dbf2"/>
+                <rect x="630" y="374" width="30" height="44" rx="4" fill="#ffffff" stroke="#d4dbf2"/>
+                <rect x="566" y="338" width="84" height="16" rx="3" fill="#e3e8fd"/>
+                <rect x="592" y="376" width="32" height="36" rx="4" fill="#d8efe1"/>
+              </g>
+
+              <!-- 志越科创中心 -->
+              <g>
+                <rect x="792" y="330" width="120" height="28" rx="4" fill="#ffffff" stroke="#d3e0ea"/>
+                <rect x="792" y="330" width="28" height="100" rx="4" fill="#ffffff" stroke="#d3e0ea"/>
+                <rect x="792" y="402" width="120" height="28" rx="4" fill="#ffffff" stroke="#d3e0ea"/>
+                <rect x="820" y="360" width="64" height="40" rx="4" fill="#d8efe1"/>
+                <rect x="800" y="338" width="100" height="12" rx="3" fill="#e0ecf8"/>
+              </g>
+
+              <!-- 绿化点：让空白草坪不至于太空 -->
+              <g fill="#c7e6d1">
+                <circle cx="136" cy="88" r="6"/><circle cx="154" cy="76" r="4"/>
+                <circle cx="176" cy="96" r="5"/><circle cx="120" cy="200" r="5"/>
+                <circle cx="152" cy="212" r="4"/><circle cx="186" cy="204" r="4"/>
+                <circle cx="600" cy="72" r="5"/><circle cx="884" cy="76" r="5"/>
+                <circle cx="900" cy="92" r="4"/><circle cx="612" cy="196" r="5"/>
+                <circle cx="642" cy="206" r="4"/><circle cx="350" cy="302" r="4"/>
+                <circle cx="570" cy="470" r="5"/><circle cx="676" cy="470" r="4"/>
+                <circle cx="742" cy="318" r="4"/><circle cx="930" cy="310" r="5"/>
+                <circle cx="80" cy="462" r="5"/><circle cx="300" cy="470" r="4"/>
+              </g>
+
+              <!-- 地点、校门与道路名称 -->
+              <g>
+                <text class="plan-label" x="302" y="70" text-anchor="middle">绍信学生公寓</text>
+                <text class="plan-label small" x="253" y="232" text-anchor="middle">创智楼</text>
+                <text class="plan-label" x="456" y="96" text-anchor="middle">绍味堂</text>
+                <text class="plan-label" x="510" y="140" text-anchor="middle">正心楼</text>
+                <text class="plan-label" x="676" y="162" text-anchor="middle">绍贤雅居</text>
+                <text class="plan-label" x="866" y="198" text-anchor="middle">精诚楼</text>
+                <text class="plan-label" x="430" y="456" text-anchor="middle">竞雄体育运动中心</text>
+                <text class="plan-label" x="608" y="450" text-anchor="middle">青越文化活动中心</text>
+                <text class="plan-label" x="852" y="454" text-anchor="middle">志越科创中心</text>
+
+                <text class="plan-label small" x="536" y="82">东门</text>
+                <text class="plan-label small" x="64" y="154">北门</text>
+                <text class="plan-label small" x="930" y="178" text-anchor="end">南门</text>
+                <text class="plan-label small" x="532" y="478">西门</text>
+
+                <text class="plan-label small" x="150" y="130" transform="rotate(-28 150 130)">信雅路</text>
+                <text class="plan-label small" x="66" y="262" transform="rotate(-90 66 262)">致远路</text>
+                <text class="plan-label small" x="492" y="446" transform="rotate(-90 492 446)">知行大道</text>
+              </g>
+            </svg>
+
+            <!-- 点击标记点后出现的地点介绍卡，位置由 JS 计算 -->
+            <div class="map-popup" id="mapPopup" role="dialog" aria-modal="false"
+                 aria-labelledby="mapPopupTitle" aria-describedby="mapPopupDesc" hidden>
+              <button class="map-popup-close" id="mapPopupClose" type="button" aria-label="关闭地点介绍">
+                <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+              </button>
+              <span class="map-popup-tag" id="mapPopupTag">综合主楼</span>
+              <h3 id="mapPopupTitle">正心楼</h3>
+              <p id="mapPopupDesc">地点介绍会显示在这里。</p>
+            </div>
+
+            <!-- 屏幕阅读器播报用；视觉上看不到 -->
+            <div class="sr-only" id="mapLive" aria-live="polite"></div>
           </div>
-
-          <!-- 屏幕阅读器播报用；视觉上看不到 -->
-          <div class="sr-only" id="mapLive" aria-live="polite"></div>
         </div>
 
         <!-- 演示数据说明：按要求明确标注 -->
         <div class="map-footnote">
           <span class="map-demo-badge">DEMO DATA</span>
-          <span>数据为演示用，可后续替换为真实数据；地图为示意布局，不代表真实比例。</span>
+          <span>地图为按学校手绘地图重绘的平面示意图，不按真实比例；地点位置与介绍为演示数据，可后续替换为真实数据。</span>
         </div>
       </div>
 
@@ -2264,7 +2329,7 @@ svg { display: block; max-width: 100%; }
         </span>
         <div class="note-copy">
           <h3>校园地图 v0.2 已上线</h3>
-          <p>首页与校园地图已经可以演示，地点数据为模拟数据。每楼查询、周边外卖和校园生活会按计划逐步补齐。</p>
+          <p>首页与校园地图已经可以演示，地图是按学校手绘地图重绘的平面示意图，地点位置与介绍为模拟数据。每楼查询、周边外卖和校园生活会按计划逐步补齐。</p>
         </div>
         <span class="note-badge">v0.2</span>
       </div>
@@ -2362,84 +2427,96 @@ svg { display: block; max-width: 100%; }
   };
 
   /* ============================================================
-     CAMPUS_LOCATIONS：校园地图的演示数据
-     ⚠ 数据为演示用，可后续替换为真实数据。
+     CAMPUS_LOCATIONS：校园地图的地点数据
+     ⚠ 地点介绍与坐标均为演示用，可后续替换为真实数据。
      每一项的含义：
        id       唯一标识，地图标记和列表按钮靠它对应
        name     地点名称
        category 分类，显示在弹窗小标签和列表里
        area     大致方位，显示在列表里
        desc     一句简单介绍，显示在弹窗里
-       x / y    标记点在地图上的百分比位置（左上角为 0，右下角为 100）
+       x / y    标记点在底图上的百分比位置（左上角为 0，右下角为 100）
        tone     配色，可选 blue / mint / amber / indigo / violet / rose
        icon     列表图标，对应页面顶部的 SVG 图标库
+     改布局后，只要同步微调每个地点的 x / y 就能重新对齐。
      ============================================================ */
   const CAMPUS_LOCATIONS = [
     {
-      id: "library",
-      name: "图书馆",
-      category: "学习空间",
-      area: "校园北侧",
-      desc: "自习、借阅和查资料的主要场所，考试周座位会比较紧张。",
-      x: 20,
-      y: 24,
+      id: "zhengxin",
+      name: "正心楼",
+      category: "综合主楼",
+      area: "校园中心",
+      desc: "校园中心区域的主楼，正门朝向东门方向，是地图上最好认的建筑之一。",
+      x: 51,
+      y: 38.1,
       tone: "blue",
-      icon: "book"
-    },
-    {
-      id: "teaching",
-      name: "第一教学楼",
-      category: "教学区",
-      area: "校园东北侧",
-      desc: "公共课和专业课的主要教学楼，上课前记得先确认教室楼层。",
-      x: 77.5,
-      y: 23,
-      tone: "mint",
       icon: "building"
     },
     {
-      id: "canteen",
-      name: "学生食堂",
+      id: "jingcheng",
+      name: "精诚楼",
+      category: "教学区",
+      area: "校园东侧",
+      desc: "靠近南门和力行桥的楼栋，平时上课、找教室常会经过这里。",
+      x: 80,
+      y: 36.3,
+      tone: "mint",
+      icon: "book"
+    },
+    {
+      id: "shaoweitang",
+      name: "绍味堂",
       category: "餐饮区",
-      area: "校园中心",
-      desc: "靠近主路的综合食堂，午餐高峰期建议错峰前往。",
-      x: 47,
-      y: 41.5,
+      area: "校园北侧",
+      desc: "靠近东门和绍信学生公寓的食堂，饭点的人流会比较集中。",
+      x: 45.6,
+      y: 25.9,
       tone: "amber",
       icon: "bowl"
     },
     {
-      id: "admin",
-      name: "行政楼",
-      category: "行政办公",
-      area: "校园西侧",
-      desc: "办理证明、学籍和校园事务的办公地点，工作日开放。",
-      x: 19.5,
-      y: 71.5,
-      tone: "indigo",
-      icon: "flag"
-    },
-    {
-      id: "dorm",
-      name: "宿舍区",
+      id: "shaoxian",
+      name: "绍贤雅居",
       category: "生活区",
-      area: "校园南侧",
-      desc: "学生宿舍与生活配套集中的区域，快递点也在附近。",
-      x: 46,
-      y: 73,
+      area: "校园东北侧",
+      desc: "校园东北侧的学生公寓群，靠近东门，日常起居都集中在这一片。",
+      x: 67.6,
+      y: 19.4,
       tone: "violet",
       icon: "bed"
     },
     {
-      id: "gym",
-      name: "体育馆",
+      id: "jingxiong",
+      name: "竞雄体育运动中心",
       category: "运动区",
-      area: "校园东南侧",
-      desc: "体育课、球类活动和晚间锻炼的主要场地，部分时段需要预约。",
-      x: 78,
-      y: 72,
+      area: "校园西南侧",
+      desc: "包含田径场和室内场馆的运动区域，体育课和傍晚锻炼常在这里。",
+      x: 43,
+      y: 73.3,
       tone: "rose",
       icon: "dumbbell"
+    },
+    {
+      id: "qingyue",
+      name: "青越文化活动中心",
+      category: "文化活动",
+      area: "校园南侧",
+      desc: "靠近西门与知行大道的活动场馆，社团和文艺活动常在这里举办。",
+      x: 60.8,
+      y: 69.6,
+      tone: "indigo",
+      icon: "flag"
+    },
+    {
+      id: "zhiyue",
+      name: "志越科创中心",
+      category: "科创空间",
+      area: "校园东南侧",
+      desc: "校园东南侧的科创空间，靠近南门，适合做项目、参加科创活动。",
+      x: 85.2,
+      y: 71.5,
+      tone: "blue",
+      icon: "sparkles"
     }
   ];
 
@@ -2458,8 +2535,9 @@ svg { display: block; max-width: 100%; }
   const modalBackdrop = modal.querySelector(".modal-backdrop");
 
   // 校园地图相关元素
+  const mapSection = document.getElementById("campus-map");
+  const mapViewport = document.getElementById("mapViewport");
   const mapCanvas = document.getElementById("mapCanvas");
-  const mapCard = document.querySelector(".map-card");
   const mapPopup = document.getElementById("mapPopup");
   const mapPopupTag = document.getElementById("mapPopupTag");
   const mapPopupTitle = document.getElementById("mapPopupTitle");
@@ -2594,10 +2672,7 @@ svg { display: block; max-width: 100%; }
     pin.style.setProperty("--y", `${loc.y}%`);
     pin.setAttribute("aria-label", `${loc.name}，点击查看地点介绍`);
     pin.setAttribute("aria-pressed", "false");
-    pin.innerHTML = `
-      <svg class="icon" aria-hidden="true"><use href="#i-pin"></use></svg>
-      <span class="map-pin-label" aria-hidden="true">${loc.name}</span>
-    `;
+    pin.innerHTML = `<svg class="icon" aria-hidden="true"><use href="#i-pin"></use></svg>`;
     pin.addEventListener("click", (event) => {
       event.stopPropagation();
       selectLocation(loc.id, pin);
@@ -2623,10 +2698,11 @@ svg { display: block; max-width: 100%; }
     `;
     item.addEventListener("click", () => {
       selectLocation(loc.id, item);
-      // 列表在地图下方，选中后回到地图，让用户看到对应的标记点
-      mapCard.scrollIntoView({
+      // 列表在地图下方，选中后回到地图板块，让用户看到对应的标记点
+      // scroll-padding-top 会避开固定在顶部的导航栏
+      mapSection.scrollIntoView({
         behavior: prefersReducedMotion() ? "auto" : "smooth",
-        block: "center"
+        block: "start"
       });
     });
     locationList.appendChild(item);
@@ -2635,6 +2711,11 @@ svg { display: block; max-width: 100%; }
 
   // 地点数量自动跟随数据变化，改数据不用再改文字
   locationCount.textContent = `${CAMPUS_LOCATIONS.length} 个演示地点`;
+
+  // 手机端地图比屏幕宽：首次打开时先滚到中间，让主楼一带直接出现在视野里
+  if (mapViewport.scrollWidth > mapViewport.clientWidth + 1) {
+    mapViewport.scrollLeft = (mapViewport.scrollWidth - mapViewport.clientWidth) / 2;
+  }
 
   // 把介绍弹窗放到标记点旁边：优先放在上方，空间不够就放到下方
   function positionMapPopup() {
@@ -2676,6 +2757,18 @@ svg { display: block; max-width: 100%; }
     mapPopup.style.setProperty("--arrow-x", `${arrowX}px`);
   }
 
+  // 手机上的地图比屏幕宽，选中地点后把它横向滚动到屏幕中间
+  function revealPinHorizontally(pin) {
+    const maxScroll = mapViewport.scrollWidth - mapViewport.clientWidth;
+    if (!pin || maxScroll <= 0) return;
+
+    const target = pin.offsetLeft - mapViewport.clientWidth / 2;
+    mapViewport.scrollTo({
+      left: Math.max(0, Math.min(target, maxScroll)),
+      behavior: prefersReducedMotion() ? "auto" : "smooth"
+    });
+  }
+
   // 选中某个地点：更新弹窗内容、高亮标记点和列表项
   function selectLocation(locationId, trigger) {
     const loc = CAMPUS_LOCATIONS.find((item) => item.id === locationId);
@@ -2697,6 +2790,8 @@ svg { display: block; max-width: 100%; }
       button.setAttribute("aria-pressed", String(key === locationId));
     });
 
+    // 手机端：先横向滚到标记点，再按新位置摆好弹窗
+    revealPinHorizontally(mapPins.get(locationId));
     positionMapPopup();
     // 等一帧再量一次，避免字体或布局刚变化时位置有偏差
     requestAnimationFrame(positionMapPopup);
