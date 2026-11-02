@@ -22,13 +22,13 @@
   7. 改占位弹窗文案          → 搜索「FEATURES 配置」
   8. 改页脚与版权            → 搜索「PAGE: 页脚」
 
-  说明：整页的 CSS、JavaScript 和校园地图都是写在这个文件内部的，
-  不依赖任何图片文件或网络资源，双击 index.html 就能打开。
-  校园地图是用代码画出来的平面俯视示意图（根据学校手绘地图重绘），
-  不是把照片直接贴上去；想要调整楼栋位置，改 SVG 里的坐标即可。
+  说明：整页的 CSS 与 JavaScript 都写在文件内部，另外用了一张地图底图
+  （assets/campus-map.png，和 index.html 放在同一文件夹里）。
+  校园地图是平面俯视示意图（根据学校手绘地图重绘），图片只负责画面，
+  楼名、标记点和地点介绍都由页面本身生成。
   当前版本完成首页与校园地图；楼宇查询、外卖和校园生活先以弹窗占位。
-  地图地点数据集中在脚本的 CAMPUS_LOCATIONS 里，位置用百分比坐标，
-  改完 SVG 布局后同步微调这些坐标，标记点就会重新对齐。
+  地图地点数据集中在脚本的 CAMPUS_LOCATIONS 里，位置用百分比坐标；
+  换底图后按新图片同步微调这些坐标，标记点就会重新对齐。
   ============================================================
 -->
 
@@ -915,45 +915,28 @@ svg { display: block; max-width: 100%; }
   overflow: hidden;
   border: 1px solid #d8e7ea;
   border-radius: 20px;
-  background: #eef5f2;
+  /* 底图四角是白色，和卡片保持一致 */
+  background: #ffffff;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7);
 }
 
-/* 地图画布：宽高比和 SVG 视图一致，标记点都按百分比坐标落位 */
+/* 地图画布：宽高比和底图一致（2080 × 1088），标记点都按百分比坐标落位 */
 .map-canvas {
   position: relative;
-  aspect-ratio: 1000 / 540;
+  aspect-ratio: 2080 / 1088;
   overflow: hidden;
+  background: #ffffff;
   border-radius: inherit;
 }
 
-/* 平面示意图：按学校手绘地图重绘，全部用 SVG 画，不依赖外部图片 */
-.map-plan {
+/* 平面示意图底图：铺满画布，不拉伸变形 */
+.map-image {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   display: block;
-}
-
-/* SVG 里的文字，和页面用同一套字体 */
-.plan-label {
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 650;
-  fill: #43564d;
-  paint-order: stroke;
-  stroke: #f8fbf8;
-  stroke-width: 3.5px;
-  stroke-linejoin: round;
-}
-
-.plan-label.small {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .04em;
-  fill: #8fa39a;
-  stroke-width: 2.5px;
+  object-fit: cover;
 }
 
 /* 地图标记点：由 JavaScript 根据地点数据生成 */
@@ -1570,15 +1553,12 @@ svg { display: block; max-width: 100%; }
     -webkit-overflow-scrolling: touch;
   }
 
+  /* 手机上的地图：画布放宽到 780px，左右滑动查看，楼名和标记点都保持可读尺寸 */
   .map-canvas {
-    width: 700px;
-    height: 378px;
+    width: 780px;
+    height: 408px;
     aspect-ratio: auto;
   }
-
-  /* 地图整体缩到 70%，文字同步放大一点，手机上才看得清 */
-  .plan-label { font-size: 15px; stroke-width: 3px; }
-  .plan-label.small { font-size: 11.5px; stroke-width: 2px; }
 
   .map-pin {
     width: 34px;
@@ -2090,9 +2070,9 @@ svg { display: block; max-width: 100%; }
 
   <!-- ============================================================
        PAGE: 校园地图
-       - 底图是按学校手绘地图重绘的内联 SVG 平面示意图，无外部图片
+       - 底图是 assets/campus-map.png（按学校手绘地图重绘的平面示意图）
        - 标记点和地点列表都由 JS 里的 CAMPUS_LOCATIONS 生成
-       - 想改布局：直接改下面 SVG 里的形状坐标，再同步微调 x / y
+       - 想调整位置：改图片后同步微调每个地点的 x / y
        ============================================================ -->
   <section class="campus-map" id="campus-map">
     <div class="container">
@@ -2112,177 +2092,10 @@ svg { display: block; max-width: 100%; }
         </div>
 
         <div class="map-viewport" id="mapViewport">
-          <div class="map-canvas" id="mapCanvas" aria-label="杭电绍兴校区平面示意图，包含正心楼、精诚楼、绍味堂、绍贤雅居、竞雄体育运动中心、青越文化活动中心和志越科创中心七个地点">
-            <!-- 底图：按学校手绘地图重绘的平面俯视示意图（内联 SVG，不依赖图片） -->
-            <svg class="map-plan" viewBox="0 0 1000 540" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
-              <!-- 底色与校园边界 -->
-              <rect width="1000" height="540" fill="#f1f8f3"/>
-              <rect x="18" y="14" width="964" height="512" rx="66" fill="#f8fbf8" stroke="#e4efe8" stroke-width="1.5"/>
-
-              <!-- 草坪：北侧教学区、东北公寓区、西南运动区、东南科创区 -->
-              <rect x="112" y="58" width="378" height="172" rx="44" fill="#e2f1e5"/>
-              <rect x="582" y="50" width="340" height="170" rx="40" fill="#e6f3e8"/>
-              <rect x="58" y="284" width="360" height="198" rx="56" fill="#e0f0e4"/>
-              <rect x="548" y="298" width="416" height="182" rx="48" fill="#e4f2e7"/>
-
-              <!-- 河流：横穿校园，桥梁和道路压在上面 -->
-              <path d="M16 268C 120 248 200 292 300 274S 470 250 560 268S 760 296 984 262L 984 300C 760 332 680 306 560 306S 360 288 300 312S 110 286 16 306Z" fill="#cbe7f6" stroke="#b4dcef" stroke-width="1.5"/>
-              <path d="M24 281C 130 263 210 300 310 284S 470 262 560 280S 760 304 978 274" fill="none" stroke="#e6f5fc" stroke-width="4" stroke-linecap="round" opacity=".9"/>
-
-              <!-- 道路：外圈环校路 + 校内主次道路 -->
-              <rect x="36" y="32" width="928" height="476" rx="62" fill="none" stroke="#e2ece5" stroke-width="28"/>
-              <rect x="36" y="32" width="928" height="476" rx="62" fill="none" stroke="#ffffff" stroke-width="21"/>
-              <g fill="none" stroke="#ffffff" stroke-linecap="round">
-                <!-- 东门 → 正心楼，正心楼 → 守正桥 → 西门 -->
-                <path d="M510 46V148" stroke-width="18"/>
-                <path d="M510 258V500" stroke-width="20"/>
-                <!-- 北门与信雅路 -->
-                <path d="M30 150C 92 150 122 120 152 98L 198 60" stroke-width="13"/>
-                <!-- 南门 → 笃学桥、力行桥 -->
-                <path d="M970 190H902V330" stroke-width="13"/>
-                <path d="M902 214C 872 226 858 244 848 268S 820 300 802 312V330" stroke-width="12"/>
-                <!-- 阳明桥、求知桥 -->
-                <path d="M226 196V292" stroke-width="13"/>
-                <path d="M356 256V300" stroke-width="10"/>
-                <!-- 致远路 -->
-                <path d="M74 198V330" stroke-width="12"/>
-                <!-- 组团之间的连接路 -->
-                <path d="M312 168C 350 200 392 218 446 226" stroke-width="11"/>
-                <path d="M662 180C 700 200 700 232 716 246" stroke-width="11"/>
-              </g>
-
-              <!-- 五座桥：阳明桥、求知桥、守正桥、力行桥、笃学桥 -->
-              <g fill="#fbf6e9" stroke="#e5dcc6" stroke-width="1.5">
-                <rect x="209" y="260" width="34" height="48" rx="5"/>
-                <rect x="340" y="258" width="32" height="46" rx="5"/>
-                <rect x="492" y="256" width="36" height="52" rx="5"/>
-                <rect x="784" y="262" width="34" height="48" rx="5"/>
-                <rect x="884" y="258" width="32" height="50" rx="5"/>
-              </g>
-              <g stroke="#c9bda2" stroke-width="2" opacity=".8">
-                <path d="M211 266V302M241 266V302M342 264V298M370 264V298M494 262V302M526 262V302M786 268V304M816 268V304M886 264V302M914 264V302"/>
-              </g>
-
-              <!-- 绍信学生公寓 -->
-              <g>
-                <rect x="232" y="82" width="142" height="30" rx="4" fill="#ffffff" stroke="#d7e3dc"/>
-                <rect x="232" y="134" width="142" height="30" rx="4" fill="#ffffff" stroke="#d7e3dc"/>
-                <rect x="232" y="82" width="26" height="82" rx="4" fill="#ffffff" stroke="#d7e3dc"/>
-                <rect x="266" y="112" width="102" height="22" rx="4" fill="#d8efe0"/>
-                <rect x="344" y="88" width="24" height="18" rx="2" fill="#e3edf7"/>
-              </g>
-
-              <!-- 创智楼 -->
-              <g>
-                <rect x="212" y="180" width="84" height="34" rx="4" fill="#ffffff" stroke="#d7e3dc"/>
-                <rect x="212" y="180" width="26" height="58" rx="4" fill="#ffffff" stroke="#d7e3dc"/>
-                <rect x="220" y="188" width="14" height="42" rx="2" fill="#e3edf7"/>
-              </g>
-
-              <!-- 绍味堂（食堂） -->
-              <g>
-                <rect x="420" y="108" width="76" height="30" rx="4" fill="#ffffff" stroke="#e6dcc6"/>
-                <rect x="448" y="136" width="16" height="12" rx="2" fill="#ffffff" stroke="#e6dcc6"/>
-                <rect x="430" y="148" width="62" height="26" rx="4" fill="#ffffff" stroke="#e6dcc6"/>
-                <rect x="428" y="114" width="60" height="12" rx="3" fill="#fbeccb"/>
-                <rect x="438" y="154" width="46" height="10" rx="3" fill="#fbeccb"/>
-              </g>
-
-              <!-- 正心楼（校园主楼） -->
-              <g>
-                <rect x="455" y="152" width="130" height="98" rx="7" fill="#ffffff" stroke="#d3e0da"/>
-                <rect x="486" y="176" width="68" height="50" rx="5" fill="#d8efe1"/>
-                <rect x="455" y="232" width="130" height="18" rx="6" fill="#fbe3c4"/>
-              </g>
-
-              <!-- 绍贤雅居（学生公寓） -->
-              <g>
-                <rect x="628" y="68" width="22" height="60" rx="3" fill="#ffffff" stroke="#d9d5ea"/>
-                <rect x="658" y="68" width="22" height="60" rx="3" fill="#ffffff" stroke="#d9d5ea"/>
-                <rect x="688" y="68" width="22" height="60" rx="3" fill="#ffffff" stroke="#d9d5ea"/>
-                <rect x="718" y="68" width="22" height="60" rx="3" fill="#ffffff" stroke="#d9d5ea"/>
-                <rect x="626" y="128" width="116" height="12" rx="3" fill="#ffffff" stroke="#d9d5ea"/>
-                <rect x="634" y="76" width="10" height="46" rx="2" fill="#eae5fb"/>
-                <rect x="664" y="76" width="10" height="46" rx="2" fill="#eae5fb"/>
-                <rect x="694" y="76" width="10" height="46" rx="2" fill="#eae5fb"/>
-                <rect x="724" y="76" width="10" height="46" rx="2" fill="#eae5fb"/>
-              </g>
-
-              <!-- 精诚楼 -->
-              <g>
-                <rect x="792" y="150" width="42" height="104" rx="5" fill="#ffffff" stroke="#d3e3dc"/>
-                <rect x="712" y="222" width="122" height="32" rx="5" fill="#ffffff" stroke="#d3e3dc"/>
-                <rect x="800" y="160" width="26" height="84" rx="3" fill="#d5f2e9"/>
-                <rect x="722" y="228" width="100" height="20" rx="3" fill="#d5f2e9"/>
-              </g>
-
-              <!-- 竞雄体育运动中心：田径场 + 室内馆 -->
-              <g>
-                <rect x="86" y="296" width="246" height="132" rx="66" fill="#f6c8c3" stroke="#eab3ac"/>
-                <rect x="96" y="306" width="226" height="112" rx="56" fill="none" stroke="#fbe0dc" stroke-width="2"/>
-                <rect x="106" y="314" width="206" height="96" rx="48" fill="#c5e6cc"/>
-                <rect x="128" y="330" width="162" height="64" rx="3" fill="none" stroke="#ffffff" stroke-width="1.6" opacity=".85"/>
-                <path d="M209 330V394M128 362H290" stroke="#ffffff" stroke-width="1.6" opacity=".85"/>
-                <circle cx="209" cy="362" r="12" fill="none" stroke="#ffffff" stroke-width="1.4" opacity=".8"/>
-
-                <rect x="372" y="342" width="120" height="86" rx="6" fill="#ffffff" stroke="#e6cfd3"/>
-                <rect x="382" y="352" width="100" height="26" rx="3" fill="#fbe0e3"/>
-                <rect x="382" y="390" width="100" height="14" rx="3" fill="#fbe0e3"/>
-              </g>
-
-              <!-- 青越文化活动中心 -->
-              <g>
-                <rect x="556" y="330" width="104" height="46" rx="5" fill="#ffffff" stroke="#d4dbf2"/>
-                <rect x="556" y="374" width="30" height="44" rx="4" fill="#ffffff" stroke="#d4dbf2"/>
-                <rect x="630" y="374" width="30" height="44" rx="4" fill="#ffffff" stroke="#d4dbf2"/>
-                <rect x="566" y="338" width="84" height="16" rx="3" fill="#e3e8fd"/>
-                <rect x="592" y="376" width="32" height="36" rx="4" fill="#d8efe1"/>
-              </g>
-
-              <!-- 志越科创中心 -->
-              <g>
-                <rect x="792" y="330" width="120" height="28" rx="4" fill="#ffffff" stroke="#d3e0ea"/>
-                <rect x="792" y="330" width="28" height="100" rx="4" fill="#ffffff" stroke="#d3e0ea"/>
-                <rect x="792" y="402" width="120" height="28" rx="4" fill="#ffffff" stroke="#d3e0ea"/>
-                <rect x="820" y="360" width="64" height="40" rx="4" fill="#d8efe1"/>
-                <rect x="800" y="338" width="100" height="12" rx="3" fill="#e0ecf8"/>
-              </g>
-
-              <!-- 绿化点：让空白草坪不至于太空 -->
-              <g fill="#c7e6d1">
-                <circle cx="136" cy="88" r="6"/><circle cx="154" cy="76" r="4"/>
-                <circle cx="176" cy="96" r="5"/><circle cx="120" cy="200" r="5"/>
-                <circle cx="152" cy="212" r="4"/><circle cx="186" cy="204" r="4"/>
-                <circle cx="600" cy="72" r="5"/><circle cx="884" cy="76" r="5"/>
-                <circle cx="900" cy="92" r="4"/><circle cx="612" cy="196" r="5"/>
-                <circle cx="642" cy="206" r="4"/><circle cx="350" cy="302" r="4"/>
-                <circle cx="570" cy="470" r="5"/><circle cx="676" cy="470" r="4"/>
-                <circle cx="742" cy="318" r="4"/><circle cx="930" cy="310" r="5"/>
-                <circle cx="80" cy="462" r="5"/><circle cx="300" cy="470" r="4"/>
-              </g>
-
-              <!-- 地点、校门与道路名称 -->
-              <g>
-                <text class="plan-label" x="302" y="70" text-anchor="middle">绍信学生公寓</text>
-                <text class="plan-label small" x="253" y="232" text-anchor="middle">创智楼</text>
-                <text class="plan-label" x="456" y="96" text-anchor="middle">绍味堂</text>
-                <text class="plan-label" x="510" y="140" text-anchor="middle">正心楼</text>
-                <text class="plan-label" x="676" y="162" text-anchor="middle">绍贤雅居</text>
-                <text class="plan-label" x="866" y="198" text-anchor="middle">精诚楼</text>
-                <text class="plan-label" x="430" y="456" text-anchor="middle">竞雄体育运动中心</text>
-                <text class="plan-label" x="608" y="450" text-anchor="middle">青越文化活动中心</text>
-                <text class="plan-label" x="852" y="454" text-anchor="middle">志越科创中心</text>
-
-                <text class="plan-label small" x="536" y="82">东门</text>
-                <text class="plan-label small" x="64" y="154">北门</text>
-                <text class="plan-label small" x="930" y="178" text-anchor="end">南门</text>
-                <text class="plan-label small" x="532" y="478">西门</text>
-
-                <text class="plan-label small" x="150" y="130" transform="rotate(-28 150 130)">信雅路</text>
-                <text class="plan-label small" x="66" y="262" transform="rotate(-90 66 262)">致远路</text>
-                <text class="plan-label small" x="492" y="446" transform="rotate(-90 492 446)">知行大道</text>
-              </g>
-            </svg>
+          <div class="map-canvas" id="mapCanvas" aria-label="杭电绍兴校区平面示意图，包含正心楼、精诚楼、绍味堂、绍贤雅居、竞雄体育中心、青越文化活动中心和志越科创中心七个地点">
+            <!-- 底图：校园平面示意图，图片文件和 index.html 放在同一文件夹 -->
+            <img class="map-image" src="assets/campus-map.png"
+                 alt="杭电绍兴校区平面示意图，标有绍信学生公寓、绍味堂、正心楼、绍贤雅居、精诚楼、创智楼、竞雄体育中心、青越文化活动中心、志越科创中心和四座校门">
 
             <!-- 点击标记点后出现的地点介绍卡，位置由 JS 计算 -->
             <div class="map-popup" id="mapPopup" role="dialog" aria-modal="false"
@@ -2438,7 +2251,7 @@ svg { display: block; max-width: 100%; }
        x / y    标记点在底图上的百分比位置（左上角为 0，右下角为 100）
        tone     配色，可选 blue / mint / amber / indigo / violet / rose
        icon     列表图标，对应页面顶部的 SVG 图标库
-     改布局后，只要同步微调每个地点的 x / y 就能重新对齐。
+     换底图后，只要同步微调每个地点的 x / y 就能重新对齐。
      ============================================================ */
   const CAMPUS_LOCATIONS = [
     {
@@ -2447,8 +2260,8 @@ svg { display: block; max-width: 100%; }
       category: "综合主楼",
       area: "校园中心",
       desc: "校园中心区域的主楼，正门朝向东门方向，是地图上最好认的建筑之一。",
-      x: 51,
-      y: 38.1,
+      x: 50,
+      y: 35.7,
       tone: "blue",
       icon: "building"
     },
@@ -2458,8 +2271,8 @@ svg { display: block; max-width: 100%; }
       category: "教学区",
       area: "校园东侧",
       desc: "靠近南门和力行桥的楼栋，平时上课、找教室常会经过这里。",
-      x: 80,
-      y: 36.3,
+      x: 78.4,
+      y: 35.8,
       tone: "mint",
       icon: "book"
     },
@@ -2469,8 +2282,8 @@ svg { display: block; max-width: 100%; }
       category: "餐饮区",
       area: "校园北侧",
       desc: "靠近东门和绍信学生公寓的食堂，饭点的人流会比较集中。",
-      x: 45.6,
-      y: 25.9,
+      x: 44,
+      y: 17.4,
       tone: "amber",
       icon: "bowl"
     },
@@ -2480,19 +2293,19 @@ svg { display: block; max-width: 100%; }
       category: "生活区",
       area: "校园东北侧",
       desc: "校园东北侧的学生公寓群，靠近东门，日常起居都集中在这一片。",
-      x: 67.6,
-      y: 19.4,
+      x: 66.2,
+      y: 17.6,
       tone: "violet",
       icon: "bed"
     },
     {
       id: "jingxiong",
-      name: "竞雄体育运动中心",
+      name: "竞雄体育中心",
       category: "运动区",
       area: "校园西南侧",
       desc: "包含田径场和室内场馆的运动区域，体育课和傍晚锻炼常在这里。",
-      x: 43,
-      y: 73.3,
+      x: 41.3,
+      y: 69.9,
       tone: "rose",
       icon: "dumbbell"
     },
@@ -2502,8 +2315,8 @@ svg { display: block; max-width: 100%; }
       category: "文化活动",
       area: "校园南侧",
       desc: "靠近西门与知行大道的活动场馆，社团和文艺活动常在这里举办。",
-      x: 60.8,
-      y: 69.6,
+      x: 58.4,
+      y: 70.8,
       tone: "indigo",
       icon: "flag"
     },
@@ -2513,8 +2326,8 @@ svg { display: block; max-width: 100%; }
       category: "科创空间",
       area: "校园东南侧",
       desc: "校园东南侧的科创空间，靠近南门，适合做项目、参加科创活动。",
-      x: 85.2,
-      y: 71.5,
+      x: 81.7,
+      y: 70.2,
       tone: "blue",
       icon: "sparkles"
     }
