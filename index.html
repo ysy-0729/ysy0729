@@ -21,6 +21,7 @@
   6. 改校园地图地点数据      → 搜索「CAMPUS_LOCATIONS」
   7. 改占位弹窗文案          → 搜索「FEATURES 配置」
   8. 改页脚与版权            → 搜索「PAGE: 页脚」
+  9. 改右下角 AI 助手        → 搜索「AI 助手浮窗」（问答在 keywordRules）
 
   说明：整页的 CSS 与 JavaScript 都写在文件内部，另外用了一张地图底图
   （assets/campus-map.png，和 index.html 放在同一文件夹里）。
@@ -2716,6 +2717,240 @@ svg { display: block; max-width: 100%; }
      页脚年份：自动跟随当前年份
      ============================================================ */
   document.getElementById("year").textContent = new Date().getFullYear();
+})();
+</script>
+
+<!-- ============================================================
+     AI 助手浮窗：右下角固定图标，点击即在首页内启动聊天
+     （问答逻辑与 chat.html 保持一致，可在下方 keywordRules 继续新增）
+     ============================================================ -->
+<style>
+.ai-fab{
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--blue-600), var(--mint-500));
+  box-shadow: 0 12px 28px -10px rgba(37,99,235,.55);
+  font-size: 28px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.ai-fab:hover{ transform: translateY(-3px) scale(1.05); }
+.ai-fab.open{ transform: rotate(90deg); }
+
+.ai-panel{
+  position: fixed;
+  right: 22px;
+  bottom: 96px;
+  width: 360px;
+  height: 500px;
+  max-height: calc(100vh - 130px);
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 30px 70px -25px rgba(15,30,53,.45);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 300;
+  transform-origin: bottom right;
+  animation: ai-pop .22s cubic-bezier(.2,.8,.2,1) both;
+}
+.ai-panel.show{ display: flex; }
+@keyframes ai-pop{ from{ opacity:0; transform: translateY(12px) scale(.96);} to{ opacity:1; transform:none;} }
+
+.ai-panel-top{
+  background: linear-gradient(135deg, var(--blue-600), var(--mint-500));
+  color:#fff;
+  padding: 13px 16px;
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+}
+.ai-panel-top h2{ font-size:16px; font-weight:600; }
+.ai-panel-close{
+  background: rgba(255,255,255,.18);
+  color:#fff; border:none;
+  width:28px; height:28px; border-radius:8px;
+  cursor:pointer; font-size:14px; line-height:1;
+}
+.ai-panel-close:hover{ background: rgba(255,255,255,.3); }
+
+#aiChatBox{
+  flex:1;
+  padding: 14px;
+  overflow-y:auto;
+  background: var(--bg, #f7faff);
+}
+#aiChatBox::-webkit-scrollbar{ width:6px; }
+#aiChatBox::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:3px; }
+
+.ai-msg{
+  margin: 10px 0;
+  max-width: 80%;
+  line-height: 1.6;
+  padding: 10px 13px;
+  font-size: 14px;
+  word-break: break-all;
+}
+.ai-msg.user{
+  margin-left:auto;
+  background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
+  color:#fff;
+  border-radius: 16px 16px 4px 16px;
+}
+.ai-msg.bot{
+  margin-right:auto;
+  background: var(--blue-50);
+  color: var(--ink-900);
+  border-radius: 16px 16px 16px 4px;
+}
+
+.ai-input-area{
+  display:flex; gap:8px;
+  padding: 12px;
+  border-top:1px solid #e2e8f0;
+}
+#aiUserInput{
+  flex:1;
+  padding: 10px 12px;
+  border:1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size:14px;
+  outline:none;
+}
+#aiUserInput:focus{ border-color: var(--blue-600); }
+#aiSendBtn{
+  padding: 0 16px;
+  border:none;
+  background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
+  color:#fff;
+  border-radius:10px;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+@media (max-width: 620px){
+  .ai-fab{ right:16px; bottom:16px; width:54px; height:54px; font-size:25px; }
+  .ai-panel{
+    right: 12px; bottom: 84px;
+    width: calc(100vw - 24px);
+    height: 70vh;
+  }
+}
+</style>
+
+<button class="ai-fab" id="aiFab" aria-label="打开AI小助手">🤖</button>
+
+<div class="ai-panel" id="aiPanel">
+  <div class="ai-panel-top">
+    <h2>AI小助手</h2>
+    <button class="ai-panel-close" id="aiClose" aria-label="关闭">✕</button>
+  </div>
+  <div id="aiChatBox"></div>
+  <div class="ai-input-area">
+    <input id="aiUserInput" placeholder="问我校园地点，如：食堂在哪...">
+    <button id="aiSendBtn">发送</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const fab = document.getElementById("aiFab");
+  const panel = document.getElementById("aiPanel");
+  const closeBtn = document.getElementById("aiClose");
+  const chatBox = document.getElementById("aiChatBox");
+  const input = document.getElementById("aiUserInput");
+  const sendBtn = document.getElementById("aiSendBtn");
+
+  function togglePanel(show){
+    const open = show !== undefined ? show : !panel.classList.contains("show");
+    panel.classList.toggle("show", open);
+    fab.classList.toggle("open", open);
+    if(open){ setTimeout(()=>input.focus(), 200); }
+  }
+  fab.addEventListener("click", ()=>togglePanel());
+  closeBtn.addEventListener("click", ()=>togglePanel(false));
+
+  // ===== 与 chat.html 一致的问答配置区，可继续在此新增问答 =====
+  const keywordRules = [
+    { pattern: "厕所", reply: "点击'校园地图'查看各个楼宇，公共卫生间分布在各教学楼、宿舍楼内。" },
+    { pattern: "卫生间", reply: "点击'校园地图'查看各个楼宇，公共卫生间分布在各教学楼、宿舍楼内。" },
+    { pattern: "食堂", reply: "点击'校园地图'，找到【绍味堂】，那是校园食堂。" },
+    { pattern: "吃饭", reply: "点击'校园地图'，找到【绍味堂】，那是校园食堂。" },
+    { pattern: "教学楼", reply: "点击'校园地图'，正心楼、精诚楼都是教学上课的地方。" },
+    { pattern: "上课", reply: "点击'校园地图'，正心楼、精诚楼都是教学上课的地方。" },
+    { pattern: "宿舍", reply: "点击'校园地图'，绍贤雅居、绍信学生公寓是学生宿舍区域。" },
+    { pattern: "睡觉", reply: "点击'校园地图'，绍贤雅居、绍信学生公寓是学生宿舍区域。" },
+    { pattern: "运动", reply: "点击'校园地图'，竞雄体育运动中心可以运动锻炼。" },
+    { pattern: "体育馆", reply: "点击'校园地图'，竞雄体育运动中心可以运动锻炼。" },
+    { pattern: "科创", reply: "点击'校园地图'，志越科创中心是科创活动的地点。" },
+    { pattern: "活动", reply: "点击'校园地图'，青越文化活动中心可以参加社团文艺活动。" },
+    { pattern: "你好", reply: "你好！我是校园AI小助手，你可以问我校园地点相关问题。" }
+  ];
+
+  const fallbackReplyList = [
+    "收到你的问题，你可以问问我校园地点相关问题。",
+    "这个问题我暂时还不太清楚，你可以往下看首页的校园地图。",
+    "我明白你的意思，建议你打开首页的校园地图看看。",
+    "让我想一想，你可以尝试询问食堂、宿舍、教学楼这类校园相关问题。",
+    "很棒的问题，你可以查看首页的完整校园地图。"
+  ];
+
+  function getAiReply(userText){
+    const text = userText.toLowerCase();
+    for(let rule of keywordRules){
+      if(text.includes(rule.pattern)) return rule.reply;
+    }
+    return fallbackReplyList[Math.floor(Math.random() * fallbackReplyList.length)];
+  }
+
+  function sleep(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
+
+  function addUserMessage(text){
+    const div = document.createElement("div");
+    div.className = "ai-msg user";
+    div.innerText = text;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  async function typeAiMessage(text){
+    const div = document.createElement("div");
+    div.className = "ai-msg bot";
+    chatBox.appendChild(div);
+    const speed = 35;
+    for(let i = 0; i < text.length; i++){
+      div.innerText += text[i];
+      chatBox.scrollTop = chatBox.scrollHeight;
+      await sleep(speed);
+    }
+  }
+
+  async function send(){
+    const text = input.value.trim();
+    if(!text) return;
+    addUserMessage(text);
+    input.value = "";
+    await sleep(600);
+    const aiText = getAiReply(text);
+    await typeAiMessage(aiText);
+  }
+
+  sendBtn.addEventListener("click", send);
+  input.addEventListener("keydown", e=>{ if(e.key === "Enter") send(); });
+
+  // 首次打开时的欢迎语
+  typeAiMessage("你好！我是校园AI小助手，你可以问我食堂、宿舍、教学楼等校园地点相关问题。");
 })();
 </script>
 </body>
