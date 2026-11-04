@@ -1795,7 +1795,7 @@ svg { display: block; max-width: 100%; }
 
         <p class="hero-intro">
           杭电综合服务网页，是面向<strong>杭州电子科技大学在校生</strong>的一站式校园信息入口。
-          找教学楼、查地图、发现周边美食、了解校园活动——每天要用的小事，都从这里开始。
+          找教学楼、查地图、发现周边美食、了解校园活动——每天要做的小事，都从这里开始。
         </p>
 
         <div class="hero-actions">
@@ -2093,10 +2093,10 @@ svg { display: block; max-width: 100%; }
         </div>
 
         <div class="map-viewport" id="mapViewport">
-          <div class="map-canvas" id="mapCanvas" aria-label="杭电绍兴校区平面示意图，包含正心楼、精诚楼、绍味堂、绍贤雅居、竞雄体育中心、青越文化活动中心和志越科创中心七个地点">
+          <div class="map-canvas" id="mapCanvas" aria-label="杭电绍兴校区平面示意图，包含正心楼、精诚楼、绍味堂、绍信学生公寓、竞越体育中心、青越文化活动中心和志越科创中心七个地点">
             <!-- 底图：校园平面示意图，图片文件和 index.html 放在同一文件夹 -->
             <img class="map-image" src="assets/campus-map.png"
-                 alt="杭电绍兴校区平面示意图，标有绍信学生公寓、绍味堂、正心楼、绍贤雅居、精诚楼、创智楼、竞越体育中心、青越文化活动中心、芯越科创中心和四座校门">
+                 alt="杭电绍兴校区平面示意图，标有绍信学生公寓、绍味堂、正心楼、绍贤雅居、精诚楼、创智楼、竞越体育中心、青越文化活动中心、志越科创中心和四座校门">
 
             <!-- 点击标记点后出现的地点介绍卡，位置由 JS 计算 -->
             <div class="map-popup" id="mapPopup" role="dialog" aria-modal="false"
@@ -2289,13 +2289,13 @@ svg { display: block; max-width: 100%; }
       icon: "bowl"
     },
     {
-      id: "shaoxian",
-      name: "绍贤雅居",
+      id: "shaoxin",
+      name: "绍信学生公寓",
       category: "生活区",
       area: "校园东北侧",
       desc: "校园东北侧的学生公寓群，靠近东门，日常起居都集中在这一片。",
-      x: 66.2,
-      y: 17.6,
+      x: 30.3,
+      y: 23,
       tone: "violet",
       icon: "bed"
     },
@@ -2889,8 +2889,8 @@ svg { display: block; max-width: 100%; }
     { pattern: "吃饭", reply: "点击'校园地图'，找到【绍味堂】，那是校园食堂。" },
     { pattern: "教学楼", reply: "点击'校园地图'，正心楼、精诚楼都是教学上课的地方。" },
     { pattern: "上课", reply: "点击'校园地图'，正心楼、精诚楼都是教学上课的地方。" },
-    { pattern: "宿舍", reply: "点击'校园地图'，绍贤雅居、绍信学生公寓是学生宿舍区域。" },
-    { pattern: "睡觉", reply: "点击'校园地图'，绍贤雅居、绍信学生公寓是学生宿舍区域。" },
+    { pattern: "宿舍", reply: "点击'校园地图'，绍信学生公寓是学生宿舍区域。" },
+    { pattern: "睡觉", reply: "点击'校园地图'，绍信学生公寓是学生宿舍区域。" },
     { pattern: "运动", reply: "点击'校园地图'，竞雄体育运动中心可以运动锻炼。" },
     { pattern: "体育馆", reply: "点击'校园地图'，竞雄体育运动中心可以运动锻炼。" },
     { pattern: "科创", reply: "点击'校园地图'，志越科创中心是科创活动的地点。" },
